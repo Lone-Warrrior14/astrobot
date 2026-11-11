@@ -1,0 +1,28 @@
+# Environment & virtual environments
+venv/
+venv312/
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Storage & Databases
+storage/
+qdrant_storage/
+*.db
+*.sqlite
+*.onnx
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.vite/
+
+# Temporary / Scratch
+*.log
+test_*.png
+test_*.jpg
+.DS_Store
