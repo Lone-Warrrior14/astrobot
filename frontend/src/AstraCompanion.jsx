@@ -345,11 +345,17 @@ export default function AstraCompanion({
 
   const handleHeadRub = (e) => {
     const now = Date.now();
-    if (now - lastMoveTimeRef.current < 80) return;
+    if (now - lastMoveTimeRef.current < 70) return;
     lastMoveTimeRef.current = now;
     mouseMoveCountRef.current += 1;
 
-    if (mouseMoveCountRef.current > 4 && animState !== 'rubbing' && animState !== 'entry') {
+    // Wake up if sleeping on touch rub
+    if (animState === 'sleeping' || animState === 'sleep_begin') {
+      wakeUpThen('idle', "Astra is up and ready! 🌟");
+      return;
+    }
+
+    if (mouseMoveCountRef.current > 3 && animState !== 'rubbing' && animState !== 'entry') {
       mouseMoveCountRef.current = 0;
       if (tempActionTimerRef.current) clearTimeout(tempActionTimerRef.current);
 
@@ -364,6 +370,12 @@ export default function AstraCompanion({
         resetIdleTimer();
       }, 2800);
     }
+  };
+
+  const handleTouchMove = (e) => {
+    // Prevent mobile pull-to-refresh or accidental scrolling while rubbing Astra
+    if (e.cancelable) e.preventDefault();
+    handleHeadRub(e);
   };
 
   const handleWidgetClick = () => {
@@ -592,30 +604,40 @@ export default function AstraCompanion({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 0 60px rgba(14, 165, 233, 0.25)'
+              boxShadow: '0 0 60px rgba(14, 165, 233, 0.25)',
+              userSelect: 'none',
+              touchAction: 'none'
             }}
           >
-            {/* Interactive head touch zone */}
+            {/* Interactive head touch zone with native touch & mouse support */}
             <div 
               className="astra-head-zone"
               onClick={handleHeadPoke}
               onMouseMove={handleHeadRub}
+              onTouchMove={handleTouchMove}
+              onTouchStart={(e) => {
+                lastMoveTimeRef.current = Date.now();
+                mouseMoveCountRef.current = 0;
+              }}
               title="Poke or rub Astra's head!"
               style={{
                 position: 'absolute',
-                top: '20px',
-                width: '60%',
-                height: '45%',
+                top: '15px',
+                width: '75%',
+                height: '60%',
                 borderRadius: '50%',
-                zIndex: 10,
-                cursor: 'pointer'
+                zIndex: 25,
+                cursor: 'pointer',
+                touchAction: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none'
               }}
             />
 
             <img 
               src={currentGif} 
               alt="Astra Companion" 
+              draggable={false}
               onError={(e) => {
                 console.warn("Astra GIF failed to load, falling back to idle:", e.target.src);
                 e.target.src = '/astra_gifs/idle.gif';
@@ -625,6 +647,8 @@ export default function AstraCompanion({
                 height: '90%',
                 objectFit: 'contain',
                 pointerEvents: 'none',
+                userSelect: 'none',
+                WebkitUserDrag: 'none',
                 filter: 'drop-shadow(0 10px 24px rgba(0, 240, 255, 0.4))'
               }}
             />
