@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Menu
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
 
@@ -32,6 +32,7 @@ export default function App() {
   const [isAstraThinking, setIsAstraThinking] = useState(false);
   const [isAstraOnly, setIsAstraOnly] = useState(false);
   const [latestAssistantReply, setLatestAssistantReply] = useState('');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Staged File/Image Upload State in Chat
   const [selectedFile, setSelectedFile] = useState(null);
@@ -603,55 +604,72 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Mobile Backdrop */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="mobile-backdrop" 
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
         {/* App Branding */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 4px 12px', borderBottom: '1px solid var(--border)' }}>
-          <img 
-            src="/logo.png" 
-            alt="Astra Talk Logo" 
-            style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid var(--accent)', boxShadow: '0 0 10px rgba(16, 163, 127, 0.3)' }} 
-          />
-          <div>
-            <h1 style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '0.3px', background: 'linear-gradient(90deg, #10a37f 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-              Astra Talk
-            </h1>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Local AI Intelligence</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px 12px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img 
+              src="/logo.png" 
+              alt="Astra Talk Logo" 
+              style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid var(--accent)', boxShadow: '0 0 10px rgba(16, 163, 127, 0.3)' }} 
+            />
+            <div>
+              <h1 style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '0.3px', background: 'linear-gradient(90deg, #10a37f 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+                Astra Talk
+              </h1>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Local AI Intelligence</span>
+            </div>
           </div>
+          <button 
+            className="mobile-close-btn"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            aria-label="Close Sidebar"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <button className="new-chat-btn" onClick={startNewChat}>
+        <button className="new-chat-btn" onClick={() => { startNewChat(); setIsMobileSidebarOpen(false); }}>
           <Plus size={16} /> New Chat
         </button>
 
         <nav className="nav-links">
           <div 
             className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
-            onClick={() => setActiveTab('chat')}
+            onClick={() => { setActiveTab('chat'); setIsMobileSidebarOpen(false); }}
           >
             <MessageSquare size={16} /> Chat
           </div>
           <div 
             className={`nav-item ${activeTab === 'image_gen' ? 'active' : ''}`}
-            onClick={() => setActiveTab('image_gen')}
+            onClick={() => { setActiveTab('image_gen'); setIsMobileSidebarOpen(false); }}
           >
             <Sparkles size={16} /> SDXL Image Generator
           </div>
           <div 
             className={`nav-item ${activeTab === 'documents' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
+            onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); setIsMobileSidebarOpen(false); }}
           >
             <Database size={16} /> Conversation Files ({documents.length})
           </div>
           <div 
             className={`nav-item ${activeTab === 'memories' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('memories'); fetchMemories(); }}
+            onClick={() => { setActiveTab('memories'); fetchMemories(); setIsMobileSidebarOpen(false); }}
           >
             <Brain size={16} /> Persistent Memory
           </div>
           <div 
             className={`nav-item ${activeTab === 'hardware' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
+            onClick={() => { setActiveTab('hardware'); fetchHardware(); setIsMobileSidebarOpen(false); }}
           >
             <HardDrive size={16} /> System & SearXNG
           </div>
@@ -666,7 +684,7 @@ export default function App() {
             <div 
               key={c.id} 
               className={`conv-item ${c.id === activeConvId ? 'active' : ''}`}
-              onClick={() => { setActiveConvId(c.id); setActiveTab('chat'); }}
+              onClick={() => { setActiveConvId(c.id); setActiveTab('chat'); setIsMobileSidebarOpen(false); }}
             >
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                 {c.title}
@@ -696,7 +714,14 @@ export default function App() {
       <main className="main-area">
         {/* Top Header */}
         <header className="top-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              aria-label="Open Sidebar"
+            >
+              <Menu size={20} />
+            </button>
             <select 
               className="model-select"
               value={selectedModel}
@@ -706,7 +731,7 @@ export default function App() {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
-            <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 500 }}>
+            <span className="local-status-badge" style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 500 }}>
               ● Local Ollama Active
             </span>
           </div>
