@@ -1,0 +1,16 @@
+{
+  "name": "astra-talk-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Astra Talk Mobile Android Application",
+  "scripts": {
+    "sync": "npx cap sync android",
+    "build:apk": "cd android && ./gradlew assembleDebug",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.0.1",
+    "@capacitor/cli": "7.0.1",
+    "@capacitor/core": "7.0.1"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Astra Talk</string>
+    <string name="title_activity_main">Astra Talk</string>
+    <string name="package_name">com.astratalk.app</string>
+    <string name="custom_url_scheme">com.astratalk.app</string>
+</resources>
