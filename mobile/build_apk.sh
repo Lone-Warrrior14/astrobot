@@ -22,7 +22,7 @@ cp -r "$CHAT_ROOT/frontend/dist" "$SCRIPT_DIR/dist"
 
 echo "3. Syncing with Android native project..."
 cd "$SCRIPT_DIR"
-npx cap sync android
+npx cap sync android && sed -i "s|gradle-9.*-bin.zip|gradle-8.14.3-all.zip|g" android/gradle/wrapper/gradle-wrapper.properties
 
 echo "4. Assembling Debug APK with Gradle..."
 cd "$SCRIPT_DIR/android"

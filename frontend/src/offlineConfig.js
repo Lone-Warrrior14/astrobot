@@ -18,12 +18,12 @@ export const OFFLINE_MODELS = {
     description: "Alibaba's benchmark-topping 3B model. Outstanding for coding, logic, multilingual conversation, and structured tasks."
   },
   image: {
-    id: "sd-turbo-q4",
-    name: "Stable Diffusion Turbo (Q4 Mobile GGUF)",
-    size: "1.6 GB",
-    filename: "sd-turbo-q4.gguf",
-    downloadUrl: "https://huggingface.co/second-state/stable-diffusion-turbo-GGUF/resolve/main/sd_turbo-q4_0.gguf",
-    description: "1-step Adversarial Diffusion Distillation (ADD). Generates 512x512 images in ~2-4 seconds on Snapdragon 8 Gen 2."
+    id: "stable-diffusion-v1-5-q4",
+    name: "Stable Diffusion v1.5 (Q4_0 GGUF)",
+    size: "1.7 GB",
+    filename: "stable-diffusion-v1-5-Q4_0.gguf",
+    downloadUrl: "https://huggingface.co/gpustack/stable-diffusion-v1-5-GGUF/resolve/main/stable-diffusion-v1-5-Q4_0.gguf",
+    description: "Battle-tested 512x512 text-to-image diffusion model. High photorealism, fully compatible with Snapdragon 8 Gen 2 Adreno 740."
   }
 };
 

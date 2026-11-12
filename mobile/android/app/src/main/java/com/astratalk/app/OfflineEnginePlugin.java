@@ -30,7 +30,7 @@ public class OfflineEnginePlugin extends Plugin {
 
         File llamaModel = new File(modelsDir, "Llama-3.2-3B-Instruct-Q4_K_M.gguf");
         File qwenModel = new File(modelsDir, "qwen2.5-3b-instruct-q4_k_m.gguf");
-        File imageModel = new File(modelsDir, "sd-turbo-q4.gguf");
+        File imageModel = new File(modelsDir, "stable-diffusion-v1-5-Q4_0.gguf");
 
         JSObject ret = new JSObject();
         ret.put("modelsPath", modelsDir.getAbsolutePath());
