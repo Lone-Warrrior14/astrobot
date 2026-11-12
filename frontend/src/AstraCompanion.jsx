@@ -345,17 +345,11 @@ export default function AstraCompanion({
 
   const handleHeadRub = (e) => {
     const now = Date.now();
-    if (now - lastMoveTimeRef.current < 70) return;
+    if (now - lastMoveTimeRef.current < 80) return;
     lastMoveTimeRef.current = now;
     mouseMoveCountRef.current += 1;
 
-    // Wake up if sleeping on touch rub
-    if (animState === 'sleeping' || animState === 'sleep_begin') {
-      wakeUpThen('idle', "Astra is up and ready! 🌟");
-      return;
-    }
-
-    if (mouseMoveCountRef.current > 3 && animState !== 'rubbing' && animState !== 'entry') {
+    if (mouseMoveCountRef.current > 4 && animState !== 'rubbing' && animState !== 'entry') {
       mouseMoveCountRef.current = 0;
       if (tempActionTimerRef.current) clearTimeout(tempActionTimerRef.current);
 
@@ -370,12 +364,6 @@ export default function AstraCompanion({
         resetIdleTimer();
       }, 2800);
     }
-  };
-
-  const handleTouchMove = (e) => {
-    // Prevent mobile pull-to-refresh or accidental scrolling while rubbing Astra
-    if (e.cancelable) e.preventDefault();
-    handleHeadRub(e);
   };
 
   const handleWidgetClick = () => {
@@ -481,81 +469,63 @@ export default function AstraCompanion({
         {/* Top Control Header */}
         <div style={{
           position: 'absolute',
-          top: '16px',
-          right: '16px',
-          left: '16px',
+          top: '20px',
+          right: '24px',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 20
+          gap: '12px',
+          alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#38bdf8',
-              boxShadow: '0 0 10px #38bdf8'
-            }} />
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#e0f2fe', letterSpacing: '0.5px' }}>
-              ASTRA
-            </span>
-          </div>
+          <button
+            onClick={() => {
+              const nextMuted = !isMuted;
+              setIsMuted(nextMuted);
+              if (window.speechSynthesis) window.speechSynthesis.cancel();
+              if (!nextMuted) speakAstra("Voice enabled!", false);
+            }}
+            title={isMuted ? "Unmute Voice" : "Mute Voice"}
+            style={{
+              background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)',
+              border: `1px solid ${isMuted ? '#ef4444' : '#0ea5e9'}`,
+              color: isMuted ? '#ef4444' : '#38bdf8',
+              borderRadius: '24px',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            <span>{isMuted ? 'Muted' : 'Voice Active'}</span>
+          </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => {
-                const nextMuted = !isMuted;
-                setIsMuted(nextMuted);
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                if (!nextMuted) speakAstra("Voice enabled!", false);
-              }}
-              title={isMuted ? "Unmute Voice" : "Mute Voice"}
-              style={{
-                background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)',
-                border: `1px solid ${isMuted ? '#ef4444' : '#0ea5e9'}`,
-                color: isMuted ? '#ef4444' : '#38bdf8',
-                borderRadius: '20px',
-                padding: '6px 12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '12px',
-                fontWeight: 600,
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-              <span>{isMuted ? 'Muted' : 'Voice'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                onExitAstraOnly();
-              }}
-              title="Exit Astra Only mode and return to Chat"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#fff',
-                borderRadius: '20px',
-                padding: '6px 12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '12px',
-                fontWeight: 600,
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              <Minimize2 size={14} />
-              <span>Chat View</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if (window.speechSynthesis) window.speechSynthesis.cancel();
+              onExitAstraOnly();
+            }}
+            title="Exit Astra Only mode and return to Chat"
+            style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#fff',
+              borderRadius: '24px',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <Minimize2 size={15} />
+            <span>Return to Chat</span>
+          </button>
         </div>
 
         {/* Center Big Astra Mascot & Speech */}
@@ -563,29 +533,27 @@ export default function AstraCompanion({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          maxWidth: '92vw',
-          padding: '0 12px',
-          margin: 'auto',
-          textAlign: 'center'
+          maxWidth: '700px',
+          padding: '0 20px',
+          marginTop: '-40px'
         }}>
           {/* Large Dynamic Speech Bubble */}
           {speechBubble && (
             <div style={{
-              background: 'rgba(15, 23, 42, 0.95)',
+              background: 'rgba(15, 23, 42, 0.88)',
               border: '1px solid rgba(56, 189, 248, 0.5)',
-              borderRadius: '20px',
-              padding: '10px 18px',
-              fontSize: '14px',
-              lineHeight: 1.45,
+              borderRadius: '24px',
+              padding: '16px 28px',
+              fontSize: '17px',
+              lineHeight: 1.5,
               fontWeight: 500,
               color: '#e0f2fe',
               textAlign: 'center',
               boxShadow: '0 8px 32px rgba(0, 180, 255, 0.25)',
               backdropFilter: 'blur(16px)',
-              marginBottom: '16px',
+              marginBottom: '24px',
               animation: 'fadeIn 0.3s ease',
-              maxHeight: '130px',
-              maxWidth: '85vw',
+              maxHeight: '160px',
               overflowY: 'auto'
             }}>
               {speechBubble}
@@ -597,85 +565,72 @@ export default function AstraCompanion({
             onClick={handleWidgetClick}
             style={{
               position: 'relative',
-              width: 'min(68vw, 280px)',
-              height: 'min(68vw, 280px)',
+              width: '320px',
+              height: '320px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(16, 185, 129, 0.08) 60%, transparent 80%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 60px rgba(14, 165, 233, 0.25)',
-              userSelect: 'none',
-              touchAction: 'none'
+              cursor: 'pointer',
+              boxShadow: '0 0 80px rgba(14, 165, 233, 0.25)'
             }}
           >
-            {/* Interactive head touch zone with native touch & mouse support */}
+            {/* Interactive head touch zone */}
             <div 
               className="astra-head-zone"
               onClick={handleHeadPoke}
               onMouseMove={handleHeadRub}
-              onTouchMove={handleTouchMove}
-              onTouchStart={(e) => {
-                lastMoveTimeRef.current = Date.now();
-                mouseMoveCountRef.current = 0;
-              }}
               title="Poke or rub Astra's head!"
               style={{
                 position: 'absolute',
-                top: '15px',
-                width: '75%',
-                height: '60%',
+                top: '30px',
+                width: '180px',
+                height: '140px',
                 borderRadius: '50%',
-                zIndex: 25,
-                cursor: 'pointer',
-                touchAction: 'none',
-                WebkitTapHighlightColor: 'transparent',
-                userSelect: 'none'
+                zIndex: 10,
+                cursor: 'pointer'
               }}
             />
 
             <img 
               src={currentGif} 
               alt="Astra Companion" 
-              draggable={false}
               onError={(e) => {
                 console.warn("Astra GIF failed to load, falling back to idle:", e.target.src);
                 e.target.src = '/astra_gifs/idle.gif';
               }}
               style={{
-                width: '90%',
-                height: '90%',
+                width: '300px',
+                height: '300px',
                 objectFit: 'contain',
                 pointerEvents: 'none',
-                userSelect: 'none',
-                WebkitUserDrag: 'none',
-                filter: 'drop-shadow(0 10px 24px rgba(0, 240, 255, 0.4))'
+                filter: 'drop-shadow(0 15px 30px rgba(0, 240, 255, 0.4))'
               }}
             />
           </div>
 
           <div style={{
-            marginTop: '12px',
-            fontSize: '11.5px',
+            marginTop: '16px',
+            fontSize: '13px',
             color: '#64748b',
-            letterSpacing: '0.5px',
+            letterSpacing: '1px',
             textTransform: 'uppercase',
-            fontWeight: 600,
-            padding: '0 10px'
+            fontWeight: 600
           }}>
-            {animState === 'sleeping' ? '😴 Astra is napping (type below to wake)' : '✨ Tap head to poke • Rub to pet'}
+            {animState === 'sleeping' ? '😴 Astra is napping (type below or click to wake)' : '✨ Tap head to poke • Rub head to pet'}
           </div>
         </div>
 
         {/* Bottom Clean Chat Input */}
         <div style={{
           position: 'absolute',
-          bottom: '16px',
+          bottom: '36px',
           width: '100%',
           maxWidth: '680px',
-          padding: '0 16px calc(env(safe-area-inset-bottom, 0px) + 8px)',
+          padding: '0 20px',
           display: 'flex',
-          gap: '8px'
+          gap: '12px'
         }}>
           <div style={{
             position: 'relative',
