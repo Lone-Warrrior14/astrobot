@@ -804,6 +804,30 @@ export default function App() {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+
+            {/* Quick Header Download Button for Mobile AI Models */}
+            <button
+              onClick={() => { setActiveTab('mobile_models'); checkOfflineModels(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid #38bdf8',
+                color: '#38bdf8',
+                padding: '5px 10px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap'
+              }}
+              title="Download Snapdragon 8 Gen 2 offline models"
+            >
+              <Download size={13} />
+              <span>Models</span>
+            </button>
+
             <span className="local-status-badge" style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 500 }}>
               ● Local Ollama Active
             </span>
