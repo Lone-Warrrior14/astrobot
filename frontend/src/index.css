@@ -500,13 +500,17 @@ body {
   .main-area {
     width: 100vw !important;
     min-width: 0 !important;
+    max-width: 100vw !important;
     flex: 1;
+    overflow-x: hidden;
   }
 
   .top-bar {
     padding: 8px 12px;
     gap: 6px;
     overflow-x: auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .top-bar::-webkit-scrollbar {
@@ -517,16 +521,27 @@ body {
     display: none;
   }
 
-  .input-area {
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
+  .chat-messages {
+    padding: 16px 12px 100px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .message-row {
+    gap: 10px;
+    width: 100%;
+  }
+
+  .input-dock {
+    padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px) 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .input-box {
-    padding: 8px 10px;
-  }
-
-  .chat-container {
-    padding: 12px 8px;
+    width: 100% !important;
+    padding: 8px 12px;
+    border-radius: 20px;
   }
 
   .message {
@@ -535,9 +550,13 @@ body {
   }
 
   .model-select {
-    max-width: 130px;
+    max-width: 140px;
     font-size: 12px;
     padding: 4px 8px;
+  }
+
+  .dock-action-btn {
+    padding: 6px;
   }
 }
 

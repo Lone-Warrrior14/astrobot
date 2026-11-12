@@ -88,13 +88,19 @@ export default function App() {
     try {
       const res = await fetch('/api/models');
       const data = await res.json();
-      const mList = (data.models || []).map(m => m.name);
+      let mList = (data.models || []).map(m => m.name);
+      if (mList.length === 0) {
+        mList = ['Llama-3.2-3B-Instruct', 'Gemma-2-2B-IT', 'gemma3:latest', 'qwen2.5:3b'];
+      }
       setModels(mList);
       if (mList.length > 0 && !mList.includes(selectedModel)) {
         setSelectedModel(mList[0]);
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Using offline default model list:", e);
+      const fallbackList = ['Llama-3.2-3B-Instruct', 'Gemma-2-2B-IT', 'SD-Turbo-Q4'];
+      setModels(fallbackList);
+      setSelectedModel(fallbackList[0]);
     }
   };
 
