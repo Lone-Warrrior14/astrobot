@@ -4,9 +4,10 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Menu
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Menu, Cpu, CheckCircle2
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
+import { OFFLINE_MODELS } from './offlineConfig';
 
 export default function App() {
   const [conversations, setConversations] = useState([]);
@@ -33,6 +34,9 @@ export default function App() {
   const [isAstraOnly, setIsAstraOnly] = useState(false);
   const [latestAssistantReply, setLatestAssistantReply] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [downloadingModelId, setDownloadingModelId] = useState(null);
+  const [modelProgress, setModelProgress] = useState({});
+  const [offlineStatus, setOfflineStatus] = useState({});
 
   // Staged File/Image Upload State in Chat
   const [selectedFile, setSelectedFile] = useState(null);
@@ -52,7 +56,64 @@ export default function App() {
     fetchConversations();
     fetchModels();
     fetchHardware();
+    checkOfflineModels();
   }, []);
+
+  const checkOfflineModels = async () => {
+    try {
+      if (window.Capacitor && window.Capacitor.isPluginAvailable('OfflineEngine')) {
+        const { OfflineEngine } = window.Capacitor.Plugins;
+        const res = await OfflineEngine.getModelStatus();
+        setOfflineStatus(res);
+      }
+    } catch (e) {
+      console.warn("OfflineEngine check:", e);
+    }
+  };
+
+  const downloadOfflineModel = async (modelKey) => {
+    const model = OFFLINE_MODELS[modelKey];
+    if (!model) return;
+
+    if (!window.Capacitor || !window.Capacitor.isPluginAvailable('OfflineEngine')) {
+      // In browser/desktop: trigger direct download
+      const a = document.createElement('a');
+      a.href = model.downloadUrl;
+      a.download = model.filename;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    try {
+      setDownloadingModelId(model.filename);
+      const { OfflineEngine } = window.Capacitor.Plugins;
+      await OfflineEngine.startDownload({
+        url: model.downloadUrl,
+        filename: model.filename
+      });
+
+      const interval = setInterval(async () => {
+        try {
+          const prog = await OfflineEngine.getDownloadProgress({ filename: model.filename });
+          setModelProgress(prev => ({ ...prev, [model.filename]: prog }));
+          if (prog.status === 'completed' || prog.status === 'failed') {
+            clearInterval(interval);
+            setDownloadingModelId(null);
+            checkOfflineModels();
+          }
+        } catch (err) {
+          clearInterval(interval);
+          setDownloadingModelId(null);
+        }
+      }, 1500);
+    } catch (err) {
+      alert(`Download trigger failed: ${err.message}`);
+      setDownloadingModelId(null);
+    }
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -660,6 +721,12 @@ export default function App() {
             onClick={() => { setActiveTab('image_gen'); setIsMobileSidebarOpen(false); }}
           >
             <Sparkles size={16} /> SDXL Image Generator
+          </div>
+          <div 
+            className={`nav-item ${activeTab === 'mobile_models' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('mobile_models'); checkOfflineModels(); setIsMobileSidebarOpen(false); }}
+          >
+            <Cpu size={16} /> Snapdragon 8 Gen 2 Models
           </div>
           <div 
             className={`nav-item ${activeTab === 'documents' ? 'active' : ''}`}
@@ -1272,6 +1339,136 @@ export default function App() {
                   <p style={{ fontSize: '14px', marginTop: '4px' }}>{m.content}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'mobile_models' && (
+          <div className="view-panel">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Cpu size={26} color="#38bdf8" />
+              <div>
+                <h2>Snapdragon 8 Gen 2 Mobile AI Models</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Offline on-device inference using ARM64 NEON & Adreno 740. Download once directly to your phone.
+                </p>
+              </div>
+            </div>
+
+            <div className="card-grid" style={{ marginTop: '20px' }}>
+              {/* Llama 3.2 3B */}
+              <div className="panel-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '15px', color: '#e0f2fe' }}>{OFFLINE_MODELS.chat.name}</strong>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontWeight: 600 }}>
+                    {OFFLINE_MODELS.chat.size}
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {OFFLINE_MODELS.chat.description}
+                </p>
+                <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: offlineStatus.llamaReady ? '#34d399' : 'var(--text-muted)' }}>
+                    {offlineStatus.llamaReady ? '✓ Installed on Phone' : (downloadingModelId === OFFLINE_MODELS.chat.filename ? `${modelProgress[OFFLINE_MODELS.chat.filename]?.status || 'Downloading'}...` : 'Not Downloaded')}
+                  </span>
+                  <button
+                    onClick={() => downloadOfflineModel('chat')}
+                    disabled={downloadingModelId === OFFLINE_MODELS.chat.filename || offlineStatus.llamaReady}
+                    style={{
+                      background: offlineStatus.llamaReady ? 'rgba(16, 163, 127, 0.2)' : 'var(--accent)',
+                      border: offlineStatus.llamaReady ? '1px solid #10a37f' : 'none',
+                      color: '#fff',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      cursor: offlineStatus.llamaReady ? 'default' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {offlineStatus.llamaReady ? <CheckCircle2 size={15} color="#34d399" /> : <Download size={15} />}
+                    <span>{offlineStatus.llamaReady ? 'Ready' : (downloadingModelId === OFFLINE_MODELS.chat.filename ? 'Downloading...' : 'Download Model')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Qwen 2.5 3B */}
+              <div className="panel-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '15px', color: '#e0f2fe' }}>{OFFLINE_MODELS.chat_ultra.name}</strong>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', fontWeight: 600 }}>
+                    {OFFLINE_MODELS.chat_ultra.size}
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {OFFLINE_MODELS.chat_ultra.description}
+                </p>
+                <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: offlineStatus.qwenReady ? '#34d399' : 'var(--text-muted)' }}>
+                    {offlineStatus.qwenReady ? '✓ Installed on Phone' : (downloadingModelId === OFFLINE_MODELS.chat_ultra.filename ? `${modelProgress[OFFLINE_MODELS.chat_ultra.filename]?.status || 'Downloading'}...` : 'Not Downloaded')}
+                  </span>
+                  <button
+                    onClick={() => downloadOfflineModel('chat_ultra')}
+                    disabled={downloadingModelId === OFFLINE_MODELS.chat_ultra.filename || offlineStatus.qwenReady}
+                    style={{
+                      background: offlineStatus.qwenReady ? 'rgba(16, 163, 127, 0.2)' : 'var(--accent)',
+                      border: offlineStatus.qwenReady ? '1px solid #10a37f' : 'none',
+                      color: '#fff',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      cursor: offlineStatus.qwenReady ? 'default' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {offlineStatus.qwenReady ? <CheckCircle2 size={15} color="#34d399" /> : <Download size={15} />}
+                    <span>{offlineStatus.qwenReady ? 'Ready' : (downloadingModelId === OFFLINE_MODELS.chat_ultra.filename ? 'Downloading...' : 'Download Model')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SD Turbo Image Generation */}
+              <div className="panel-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '15px', color: '#e0f2fe' }}>{OFFLINE_MODELS.image.name}</strong>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6', fontWeight: 600 }}>
+                    {OFFLINE_MODELS.image.size}
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {OFFLINE_MODELS.image.description}
+                </p>
+                <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: offlineStatus.imageReady ? '#34d399' : 'var(--text-muted)' }}>
+                    {offlineStatus.imageReady ? '✓ Installed on Phone' : (downloadingModelId === OFFLINE_MODELS.image.filename ? `${modelProgress[OFFLINE_MODELS.image.filename]?.status || 'Downloading'}...` : 'Not Downloaded')}
+                  </span>
+                  <button
+                    onClick={() => downloadOfflineModel('image')}
+                    disabled={downloadingModelId === OFFLINE_MODELS.image.filename || offlineStatus.imageReady}
+                    style={{
+                      background: offlineStatus.imageReady ? 'rgba(16, 163, 127, 0.2)' : 'var(--accent)',
+                      border: offlineStatus.imageReady ? '1px solid #10a37f' : 'none',
+                      color: '#fff',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      cursor: offlineStatus.imageReady ? 'default' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {offlineStatus.imageReady ? <CheckCircle2 size={15} color="#34d399" /> : <Download size={15} />}
+                    <span>{offlineStatus.imageReady ? 'Ready' : (downloadingModelId === OFFLINE_MODELS.image.filename ? 'Downloading...' : 'Download Model')}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
