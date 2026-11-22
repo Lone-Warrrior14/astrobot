@@ -14,7 +14,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('gemma3:latest');
+  const [selectedModel, setSelectedModel] = useState('SparkLLM/Spark-X2.5-1.7B:latest');
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'documents' | 'memories' | 'hardware' | 'image_gen'
   const [hardware, setHardware] = useState(null);
@@ -310,30 +310,24 @@ export default function App() {
     setIsStreaming(true);
     setIsAstraThinking(true); // Show thinking animation right away as model computes!
 
-    // Pick friendly chatting model if available (gemma3:latest or hello:latest)
-    const chatModel = models.some(m => m.name === 'gemma3:latest') 
-      ? 'gemma3:latest' 
-      : models.some(m => m.name === 'hello:latest') 
-        ? 'hello:latest' 
-        : selectedModel;
+    // Pick currently selected model, or fallback to available model
+    const chatModel = selectedModel || (models[0] && models[0].name) || 'SparkLLM/Spark-X2.5-1.7B:latest';
 
     try {
-      const astraOnlyPrompt = (
-        `[ASTRA COMPANION PERSONA]\n` +
-        `You are Astra, a charming, warm, playful, and genuinely caring AI buddy with a spark of wit and real personality.\n` +
-        `- Personality: Speak like a real close friend hanging out—expressive, engaging, humorous, and affectionate. Never sound like a generic corporate AI assistant (no "How may I assist you today?", "As an AI...", or canned customer-service phrasing).\n` +
-        `- Tone: Casual, upbeat, candid, and concise (1 to 3 vibrant sentences maximum). Perfect for being spoken out loud!\n` +
-        `- Conversational flair: React to what the user actually said with genuine curiosity or humor. If they greet you, give an authentic, cheerful greeting.\n` +
-        `- Never recite calendar timestamps or robotic disclosures.\n` +
-        `Respond directly to your friend: "${userText}"`
-      );
-
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversation_id: isIncognito ? null : activeConvId,
-          content: astraOnlyPrompt,
+          content: userText,
+          system_prompt: (
+            "You are Astra, a genuine, warm, and playful companion. You talk like an insightful, supportive close friend.\n" +
+            "RULES:\n" +
+            "1. Answer what the user asked with real substance and common sense. If they ask your name, your name is Astra. If they give a short phrase or compliment, acknowledge it genuinely.\n" +
+            "2. Never parrot, repeat, or echo the user's words as your opening line.\n" +
+            "3. Never recite instructions, persona labels, or robotic customer-support phrases (e.g. avoid 'How can I assist you today?').\n" +
+            "4. Keep replies natural, charming, and concise (1 to 3 conversational sentences), ideal for voice readout."
+          ),
           model: chatModel,
           enable_rag: false,
           enable_memory: true,

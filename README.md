@@ -1,44 +1,20 @@
 # 🌌 Astra Talk - Autonomous Local AI System & Companion
 
-**Astra Talk** is an enterprise-grade, privacy-first, fully autonomous local AI platform and companion. Designed for **Ubuntu Linux** (deeply optimized for NVIDIA RTX GPUs) and **Android (deeply optimized for Snapdragon 8 Gen 2 with Hexagon HTP v73 NPU)**.
+**Astra Talk** is an enterprise-grade, privacy-first, fully autonomous local AI platform and companion. Designed for **Ubuntu Linux** and deeply optimized for high efficiency on **consumer GPUs (NVIDIA RTX 3050 Mobile - 4GB VRAM)** with 16GB system RAM.
 
 Far beyond a traditional chat clone, Astra Talk combines:
-- **Dual-Platform Architecture**: Desktop Progressive Web App (PWA) + Native Offline Android App (OnePlus 11 / Snapdragon 8 Gen 2).
-- **On-Device Mobile NPU Stable Diffusion**: Synthesizes 512×512 photorealistic images in **4.1 seconds** via Qualcomm Hexagon HTP v73 NPU completely offline.
-- **On-Device Mobile Scoped RAG & ML Kit OCR**: In-chat document parsing (PDF/Images via Google ML Kit), 384-dimensional dense semantic vector database in IndexedDB, strictly scoped per conversation.
-- **Interactive Companion Mascot (`/astra` & `/astraonly`)**: Reactive animations, tactile head rub/petting with authentic cat purrs, boop sounds, and spoken voice lip-sync.
-- **Zero-Footprint Incognito Mode** & Continuous Long-Term Memory.
-- **Comprehensive Flow & UML Architecture Documentation**: Detailed Mermaid diagrams for both PWA and Mobile.
-
----
-
-## 📱 Mobile Native & Snapdragon 8 Gen 2 AI Capabilities
-
-The `mobile/` directory contains an isolated, production-ready Android application built with **Capacitor 7**, **Custom C++ JNI (`llama.cpp`)**, **Google ML Kit**, and **Qualcomm QNN (Qualcomm Neural Network)**:
-
-### 1. ⚡ On-Device NPU Image Generation (Qualcomm Hexagon HTP v73)
-- Direct on-device image synthesis using Snapdragon 8 Gen 2's Hexagon NPU.
-- **Performance**: Generates 512×512 images in **4.1 seconds** with zero cloud latency or data usage.
-- **Natural Prompt Routing**: Multi-word descriptive prompts like `"create a black cat and white cat"` or `"draw a sunset over mountains"` are parsed and routed straight to the NPU engine.
-- **Persistent Media Storage**: Generated PNGs are stored in Android app storage and bridge-served through `Capacitor.convertFileSrc`, persisting across app restarts.
-
-### 2. 📄 Scoped In-Chat Document RAG & Google ML Kit OCR
-- **Per-Chat Scoped Vector Database**: Powered by `localVectorDb.js` using client-side IndexedDB and cosine similarity search. Embeddings and document chunks are strictly isolated to the active `conversationId`—preventing cross-chat contamination.
-- **Google ML Kit OCR**: Native Android OCR parses both image attachments and multi-page PDFs (rendered via Android `PdfRenderer`) in **20–40ms**.
-- **Chat Dock Attachment**: In-chat paperclip button lets you attach documents directly into any active session.
-
-### 3. 🎯 Android Native Back Button Interception
-- Full gesture and hardware Back button handling:
-  1. Closes the navigation drawer if open.
-  2. Exits fullscreen companion mascot mode (`/astraonly`) back to chat.
-  3. Switches secondary tabs (*Documents & OCR*, *Snapdragon Models*, *Cloud Endpoints*) back to the main chat.
-  4. Exits the app only when pressed from the root main chat.
+- **Autonomous RAG & Private Meta-Search** (Strict conversation isolation, zero cross-chat contamination)
+- **Continuous Long-Term Memory & Dual-Vector Recall** (PostgreSQL + Qdrant ONNX embeddings)
+- **Zero-Footprint Incognito Mode**
+- **Dynamic VRAM Handoff Image Studio** (Realistic Vision v6 & SDXL Base 1.0)
+- **Interactive Living Companion Easter Egg (`/astra` & `/astraonly`)** with real-time reactive animations, tactile gestures, realistic cat purrs, and spoken dialogue.
+- **Full Architecture & Flow Documentation**: Interactive Mermaid sequence and class diagrams in [frontend/FLOW_AND_UML.md](frontend/FLOW_AND_UML.md).
 
 ---
 
 ## ⚡ The Astra Companion Easter Egg (`/astra` & `/astraonly`)
 
-Astra is an animated, voice-capable companion living directly inside your workspace and mobile device.
+Astra is not just an interface—she is an animated, voice-capable companion living directly inside your workspace.
 
 ```
        .-''''-.
@@ -52,118 +28,132 @@ Astra is an animated, voice-capable companion living directly inside your worksp
 ```
 
 ### 1. Activating the Companion
-- Type **`/astra`** (or `\astro`): Summons the floating, draggable interactive Astra mascot.
-- Type **`/astraonly`**: Hides message histories and chrome, entering a full-screen companion studio with animations and voice synthesis.
+- Type **`/astra`** (or `\astro`): Summons the floating, draggable interactive Astra widget in the corner of your screen.
+- Type **`/astraonly`**: Hides regular chat and message histories, entering a full-screen immersive companion studio with large visual animations and natural voice synthesis.
 
 ### 2. State-Driven Animations
-- **Entry Greeting**: [`hi.gif`](mobile/web-src/public/astra_gifs/hi.gif) plays upon summoning with an animated welcome bubble.
-- **Thinking / Processing**: [`think.gif`](mobile/web-src/public/astra_gifs/think.gif) ponders continuously while local LLMs generate or RAG search executes.
-- **Speaking & Streaming**: [`speak.gif`](mobile/web-src/public/astra_gifs/speak.gif) syncs with streaming tokens and speech audio output.
-- **Victory Celebration**: [`celebration.gif`](mobile/web-src/public/astra_gifs/celebration.gif) celebrates when an answer completes before settling into idle.
-- **Active Idle State**: [`idle.gif`](mobile/web-src/public/astra_gifs/idle.gif) breathes naturally while awaiting your next prompt.
-- **12-Second Inactivity & Sleep Loop**: Transitions through `sleep_begin.gif` into a peaceful `sleep_loop.gif`.
-- **Keystroke Surprise Wakeup**: The moment you type any key, Astra wakes up via `wake_up.gif`.
+Astra reacts to every stage of the AI pipeline with customized frame-by-frame animations:
+- **Entry Greeting**: [`hi.gif`](frontend/public/astra_gifs/hi.gif) plays upon summoning with an animated welcome bubble.
+- **Thinking / Processing**: [`think.gif`](frontend/public/astra_gifs/think.gif) ponders continuously while local LLMs generate or SearXNG performs meta-search.
+- **Speaking & Streaming**: [`speak.gif`](frontend/public/astra_gifs/speak.gif) syncs with the streaming tokens and audio synthesis output.
+- **Victory Celebration**: [`celebration.gif`](frontend/public/astra_gifs/celebration.gif) celebrates when an answer completes before settling into idle.
+- **Active Idle State**: [`idle.gif`](frontend/public/astra_gifs/idle.gif) breathes naturally while awaiting your next prompt.
+- **12-Second Inactivity & Sleep Loop**: Transitions through [`sleep_begin.gif`](frontend/public/astra_gifs/sleep_begin.gif) into a peaceful, continuous [`sleep_loop.gif`](frontend/public/astra_gifs/sleep_loop.gif).
+- **Keystroke Surprise Wakeup**: The instant you type any new key into the prompt box, Astra jolts awake with a surprise reaction via [`wake_up.gif`](frontend/public/astra_gifs/wake_up.gif).
 
 ### 3. Tactile Interactions & Audio Engine
-- 🖐️ **Head Poke / Boop**: Tap Astra's head to boop her, alternating between a pop sound and a spoken *"Boop!"*.
-- 💆 **Head Rub & Petting**: Scrub back and forth across Astra's head to trigger `head_rub.gif` with an acoustic **cat purr rumble** (`purr.wav`).
-- 🎙️ **Natural Voice**: Real-time TTS synthesis tuned with an upbeat cadence (`pitch: 1.35`, `rate: 0.90`) and regex-based emoji filtering.
+- 🖐️ **Head Poke / Boop**: Tap Astra's head to boop her. Alternates between a custom `boop.mp3` pop and a human voice saying *"Boop!"*.
+- 💆 **Head Rub & Petting**: Scrub your mouse back and forth across Astra's head to trigger [`head_rub.gif`](frontend/public/astra_gifs/head_rub.gif) accompanied by an authentic acoustic **cat purr rumble** (`purr.wav`) without speech interruption.
+- 🎙️ **Cute Spoken Voice**: Integrates natural speech synthesis tuned with an upbeat cadence (`pitch: 1.35`, `rate: 0.90`) and regex-based emoji filtering so Astra never speaks out raw emoji names.
+- 🔇 **One-Click Mute & Minimizer**: Controls to mute audio or return to standard chat without interrupting background generations.
 
 ---
 
-## ✨ Desktop PWA Core Platform Capabilities
+## ✨ Core Platform Capabilities
 
 ### 1. 💬 Modern Streaming Workspace
 - Single-page responsive application built with **React 18**, **Vite**, and **Lucide Icons**.
 - Real-time token streaming with Server-Sent Events (SSE).
 - `<think>` deep reasoning process collapse viewer (engineered for DeepSeek-R1 and reasoning models).
-- Dynamic model switcher supporting all locally installed Ollama models (`gemma3`, `qwen2.5vl`, `deepseek-r1`, etc.).
+- Dynamic model switcher supporting all locally installed Ollama models (`gemma3:latest`, `qwen2.5vl:7b`, `deepseek-r1:7b`, etc.).
+- Multi-conversation management with renaming, auto-naming, and conversation deletion.
 
 ### 2. 🛡️ Incognito Mode (Zero Footprint)
 - One-click toggle in the header dock.
 - **Zero Database Writes**: Messages are held purely in memory and never written to PostgreSQL.
 - **Zero Vector Leakage**: Vector indexing and memory persistence are suspended during incognito sessions.
+- Displays an active purple privacy banner.
 
 ### 3. 🧠 Persistent Long-Term Memory System
-- **Dual-Store Architecture**: Memories are indexed in Qdrant (`chat_memories`) using ONNX `BAAI/bge-small-en-v1.5` embeddings and stored in PostgreSQL.
+- **Dual-Store Architecture**: Memories are indexed in Qdrant's vector collection (`chat_memories`) using ONNX `BAAI/bge-small-en-v1.5` embeddings and stored in PostgreSQL.
 - **In-Chat Commands**:
   - `remember <fact>` / `remember that <fact>`: Permanently saves facts into long-term memory.
   - `list remember` / `list memories`: Lists everything remembered with unique IDs.
-  - `forget <keyword or ID>`: Deletes matching memories from Qdrant and PostgreSQL.
+  - `forget <keyword>` / `forget <id>`: Deletes matching memories from both Qdrant and PostgreSQL.
   - `forget all`: Clears the entire memory store.
+- **Automatic Semantic Recall**: Relevant user preferences and facts are automatically retrieved and injected into the LLM system prompt.
+- **UI Memory Manager**: Interactive dashboard to view, add, or delete memories.
 
-### 4. 🎨 Desktop Stable Diffusion Image Generation
-- Powered by local **Realistic Vision v6 (FP16)** pipeline from `/home/lone-warrior/sd`.
-- **Dynamic VRAM Handoff**: Releases Ollama LLM VRAM before rendering to avoid OOM errors on 4GB VRAM.
-- Fast generation delivering 512×512 photorealistic images in under 7 seconds.
+### 4. 📁 Strictly Isolated Document RAG (Zero Cross-Chat Leakage)
+- Attach `.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`, or `.md` files.
+- Extracted and chunked (500 tokens with 50-token overlap) with an animated upload progress bar.
+- **Hard Vector Isolation**: All vectors in Qdrant have a mandatory `conversation_id` payload filter. Documents uploaded to Conversation A can **never** be retrieved or leaked into Conversation B.
+- **Strict RAG-Only Grounding Mode**: Toggleable mode that strictly binds responses to uploaded files, preventing model hallucinations when information is absent.
+- Automatic document cleanup when a conversation is deleted.
 
-### 5. 🌐 Private Web & Image Search (SearXNG)
+### 5. 🎨 Local Stable Diffusion Image Generation
+- Powered by your local **Realistic Vision v6 (FP16)** pipeline from `/home/lone-warrior/sd`.
+- **Dynamic VRAM Handoff**: Automatically calls Ollama (`/api/ps`) to release LLM VRAM before rendering, preventing any `CUDA out of memory` errors on 4GB VRAM.
+- **Fast Inference**: Runs at ~3.2 steps/sec, delivering high-resolution 512×512 photorealistic images in **under 7 seconds** (~2.0GB VRAM footprint).
+- **Direct In-Chat Trigger**: Type `create a image of <prompt>` to trigger inline image generation with live shimmer loading animations.
+- **Clean Static Asset Serving**: Generates and serves clean URLs via `/storage/images/<id>.png`.
+- Standalone generation studio and gallery tab included.
+
+### 6. 🌐 Private Web & Image Search (SearXNG)
 - Local private metasearch engine running via Docker on `http://localhost:8888`.
-- Gated trigger (`research <topic>`) prevents accidental search overhead.
+- **Strictly Gated Keyword Trigger**: Web search will **only** trigger when the user explicitly prefixes or includes the word `research` (e.g. `research latest quantum computing breakthroughs`).
+- **Image Search**: Type `research images of <topic>` to fetch and render image markdown links inline.
+- Live system date anchoring prevents hallucinations regarding current events and news.
+
+### 7. 👁️ Local Vision & Audio
+- **Multimodal Vision**: Upload images via the chat input dock or top bar to analyze them with `gemma3:latest` or `qwen2.5vl:7b`.
+- **Faster-Whisper STT**: Local audio transcription via `base.en`.
+- **Piper TTS**: Local ultra-low-latency neural text-to-speech synthesis (`en_US-lessac-medium.onnx`).
 
 ---
 
-## 📐 Architecture & UML Flow Diagrams
-
-Detailed architecture guides and interactive Mermaid sequence diagrams are available in the repository:
-
-- 🖥️ **Desktop PWA Flow & UML**: [frontend/FLOW_AND_UML.md](frontend/FLOW_AND_UML.md)
-  - Component Hierarchy Class Diagram (`App.jsx`, `AstraCompanion.jsx`, etc.)
-  - End-to-end Chat, RAG & Memory Sequence Diagram
-  - Stable Diffusion PyTorch Denoising Pipeline
-  - Document Ingestion & Vector Upsert Flow
-
-- 📱 **Mobile Native Flow & UML**: [mobile/FLOW_AND_UML.md](mobile/FLOW_AND_UML.md)
-  - Capacitor Bridge & Native Plugin Architecture (`OfflineEnginePlugin.java`)
-  - On-Device Qualcomm Hexagon HTP v73 NPU Image Synthesis Flow
-  - On-Device Scoped IndexedDB Vector RAG & Google ML Kit OCR Flow
-  - Android Hardware Back Button State Machine
+## 📐 Architecture & Flow Diagrams
+Full UML and sequence diagrams for the application can be explored directly in:
+👉 **[frontend/FLOW_AND_UML.md](frontend/FLOW_AND_UML.md)**
 
 ---
 
 ## 🏗️ Architecture & Tech Stack
 
-| Component | Technology | Target / Port | Purpose |
+| Component | Technology | Port / Path | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Desktop Web PWA** | React 18, Vite, Lucide | `http://localhost:3000` | Desktop workspace, memory manager, companion |
-| **Mobile App** | Capacitor 7, React, Android SDK | Android 14/15 (`ddac111f`) | Standalone offline mobile APK |
-| **Mobile NPU SD** | Qualcomm QNN / Hexagon HTP v73 | On-Device (:8085) | Sub-5s offline Stable Diffusion |
-| **Mobile OCR** | Google ML Kit (Text Recognition) | Android Native | 20-40ms on-device PDF & image OCR |
-| **Mobile Vector DB** | IndexedDB (Cosine Similarity) | On-Device Client | Scoped semantic RAG per conversation |
-| **Backend Server** | FastAPI, Python 3.12, Uvicorn | `http://localhost:8000` | Desktop REST API, SSE streaming, orchestration |
-| **Relational DB** | PostgreSQL 16 (Alpine) | `5433` (`local-chat-postgres`) | Desktop chat history & memory storage |
-| **Vector DB** | Qdrant | `6333` (`vibrant_greider`) | Desktop document chunks & memory vectors |
-| **Desktop LLM** | Ollama | `http://localhost:11434` | Desktop local language model inference |
-| **Desktop SD** | Diffusers / SD 1.5 FP16 | `/home/lone-warrior/sd` | Realistic Vision v6 image generation |
+| **Frontend** | React 18, Vite, Lucide | `http://localhost:3000` | Chat UI, Companion Mascot, Memory Manager, Gallery |
+| **Backend** | FastAPI, Python 3.12, Uvicorn | `http://localhost:8000` | REST API, SSE Streaming, Orchestration |
+| **Relational DB** | PostgreSQL 16 (Alpine) | `5433` (`local-chat-postgres`) | Conversations, Messages, Metadata |
+| **Vector DB** | Qdrant | `6333` (`vibrant_greider`) | Document chunks & Semantic Memory |
+| **Embeddings** | FastEmbed (`bge-small-en-v1.5`) | Local ONNX | 384-dimensional dense embeddings |
+| **LLM Inference** | Ollama | `http://localhost:11434` | Gemma 3, DeepSeek, Qwen models |
+| **Image Generation** | Diffusers / SD 1.5 FP16 | `/home/lone-warrior/sd` | Realistic Vision v6 generation |
+| **Private Search** | SearXNG | `http://localhost:8888` | Aggregated Web & Image Search |
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Launching Desktop PWA & Backend
-Ensure Docker and Ollama are running:
+### 1. Prerequisites Check
+Make sure Docker, NVIDIA drivers, and Ollama are active:
 ```bash
-# Start PostgreSQL & Qdrant
-docker start local-chat-postgres vibrant_greider local-searxng
+docker ps
+ollama list
+nvidia-smi
+```
 
-# Start AstraTalk Backend & Frontend
+### 2. Start Supporting Infrastructure
+Run the official container services if they are not already active:
+```bash
+# PostgreSQL 16
+docker start local-chat-postgres
+
+# Qdrant Vector DB
+docker start vibrant_greider
+
+# SearXNG Metasearch Engine
+docker start local-searxng
+```
+
+### 3. Launch the Application
+Run the root startup script to spin up the backend and frontend simultaneously:
+```bash
 ./start.sh
 ```
-Open your browser at 👉 **`http://localhost:3000`**.
 
-### 2. Building & Installing Mobile APK
-To compile and deploy to your connected Android device:
-```bash
-# Build web assets and sync Capacitor
-cd mobile/web-src && npm run build
-cp -r dist/* ../dist/ && cd .. && npx cap sync android
-
-# Compile debug APK with JDK 21
-JAVA_HOME=/home/lone-warrior/jdk21/jdk-21.0.13+9 PATH=/home/lone-warrior/jdk21/jdk-21.0.13+9/bin:$PATH ./android/gradlew -p android assembleDebug
-
-# Install on connected device via ADB
-adb -s <device_id> install -r -d AstraTalk-debug.apk
-```
+Open your browser at:
+👉 **`http://localhost:3000`**
 
 ---
 
@@ -173,19 +163,18 @@ adb -s <device_id> install -r -d AstraTalk-debug.apk
 | :--- | :--- |
 | `/astra` or `\astro` | Summon the floating interactive Astra Companion |
 | `/astraonly` | Enter full-screen immersive Astra companion studio |
-| `create a image of <prompt>` | Synthesize photorealistic images (Desktop SD or Mobile NPU) |
 | `remember <fact>` | Store a fact permanently into long-term memory |
 | `list remember` | View all stored memories with unique IDs |
 | `forget <keyword or ID>` | Remove a specific memory |
 | `forget all` | Wipe all memories from vector and relational storage |
 | `research <topic>` | Query local SearXNG private search engine for live web data |
 | `research images of <topic>` | Fetch and render web images directly in chat |
+| `create a image of <prompt>` | Synthesize photorealistic images using local Stable Diffusion |
 | Tap head / Rub head | Boop Astra or give head rubs for real cat purr reactions |
-| Android Back Gesture | Navigates back to main chat from drawer, companion, or sub-tabs |
 
 ---
 
 ## 🔒 Privacy & Security Guarantee
-- **100% Local Inference**: All language, vision, speech, and image models run entirely on your local PC hardware or on-device phone processors.
-- **Zero Third-Party Telemetry**: Zero data leaves your devices.
+- **100% Local Inference**: All language, vision, speech, and image models run entirely on your local hardware.
+- **Zero Third-Party Telemetry**: Zero data leaves your machine unless you explicitly trigger private metasearch via SearXNG.
 - **Isolated Storage**: Document embeddings are strictly bound to individual conversation IDs and automatically cleaned up upon conversation removal.

@@ -28,42 +28,78 @@ const speakAstra = (text, isMuted, onStart, onEnd) => {
   }
 
   try {
-    window.speechSynthesis.cancel();
     const cleanText = cleanForSpeech(text);
     if (!cleanText) {
       if (onEnd) onEnd();
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    // Cancel any previous utterances
+    window.speechSynthesis.cancel();
 
-    // Cute, friendly mascot parameters: higher pitch, calm cadence
-    utterance.pitch = 1.35;
-    utterance.rate = 0.90;
-    utterance.volume = 0.95;
+    // Use Web Audio API micro-tick to wake audio hardware immediately
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+    } catch (_) {}
 
-    const voices = window.speechSynthesis.getVoices();
-    const cuteVoice = voices.find(v => 
-      v.lang.startsWith('en') && (
-        v.name.includes('Samantha') || 
-        v.name.includes('Victoria') || 
-        v.name.includes('Zira') ||
-        v.name.includes('Jenny') ||
-        v.name.includes('Google UK English Female') ||
-        v.name.includes('Google US English') ||
-        v.name.toLowerCase().includes('female')
-      )
-    ) || voices.find(v => v.lang.startsWith('en'));
+    setTimeout(() => {
+      try {
+        // Prepend leading pause punctuation (comma & ellipsis) so the audio driver
+        // spins up on the silent pause rather than clipping the first word!
+        const paddedText = `, ... ${cleanText}`;
+        const utterance = new SpeechSynthesisUtterance(paddedText);
 
-    if (cuteVoice) utterance.voice = cuteVoice;
+        // Cute, friendly mascot parameters: higher pitch, calm cadence
+        utterance.pitch = 1.35;
+        utterance.rate = 0.90;
+        utterance.volume = 0.95;
 
-    if (onStart) utterance.onstart = onStart;
-    if (onEnd) {
-      utterance.onend = onEnd;
-      utterance.onerror = onEnd;
-    }
+        // Pick preferred English voice if available
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          const preferredVoice = voices.find(v => 
+            v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Female') || v.name.includes('Google') || v.name.includes('Samantha'))
+          ) || voices.find(v => v.lang.startsWith('en'));
+          if (preferredVoice) utterance.voice = preferredVoice;
+        }
 
-    window.speechSynthesis.speak(utterance);
+        let ended = false;
+        const finish = () => {
+          if (!ended) {
+            ended = true;
+            if (onEnd) onEnd();
+          }
+        };
+
+        const maxWaitMs = Math.max(4000, (cleanText.length / 8) * 1000);
+        const safetyTimer = setTimeout(finish, maxWaitMs);
+
+        utterance.onend = () => {
+          clearTimeout(safetyTimer);
+          finish();
+        };
+        utterance.onerror = (e) => {
+          clearTimeout(safetyTimer);
+          finish();
+        };
+
+        if (onStart) utterance.onstart = onStart;
+
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+      } catch (innerErr) {
+        console.warn("Astra inner voice error:", innerErr);
+        if (onEnd) onEnd();
+      }
+    }, 120);
   } catch (err) {
     console.warn("Astra voice error:", err);
     if (onEnd) onEnd();
@@ -267,15 +303,17 @@ export default function AstraCompanion({
         wakeUpThen('speaking', "Here's what I think! 💬");
       } else {
         setAnimState('speaking');
-        setSpeechBubble("Answering... 💬");
+        if (!isAstraOnly) {
+          setSpeechBubble("Answering... 💬");
+        }
       }
     } else {
       // Completed streaming
       if (animState === 'speaking' || animState === 'thinking') {
         if (isAstraOnly && latestReply) {
-          // In Astra-Only mode, set speaking animation while speaking the reply out loud!
+          // In Astra-Only mode, set speaking animation while speaking the full reply out loud!
           setAnimState('speaking');
-          setSpeechBubble(latestReply.slice(0, 160) + (latestReply.length > 160 ? '...' : ''));
+          setSpeechBubble(latestReply);
           speakAstra(
             latestReply, 
             isMutedRef.current,

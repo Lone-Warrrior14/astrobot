@@ -148,6 +148,7 @@ async def chat_stream(data: dict, db: AsyncSession = Depends(get_db)):
     enable_search = data.get("enable_search", True)
     incognito = data.get("incognito", False)
     rag_only = data.get("rag_only", False)
+    custom_system_prompt = data.get("system_prompt")
 
     if not content:
         raise HTTPException(status_code=400, detail="Content cannot be empty")
@@ -208,7 +209,8 @@ async def chat_stream(data: dict, db: AsyncSession = Depends(get_db)):
                 enable_memory=enable_memory and not incognito and not rag_only,
                 enable_tools=enable_tools and not rag_only,
                 enable_search=enable_search and not rag_only,
-                rag_only=rag_only
+                rag_only=rag_only,
+                custom_system_prompt=custom_system_prompt
             ):
                 if "delta" in chunk:
                     collected_response += chunk["delta"]

@@ -34,7 +34,8 @@ class OllamaService:
         enable_tools: bool = True,
         enable_search: bool = True,
         rag_only: bool = False,
-        images: Optional[List[str]] = None
+        images: Optional[List[str]] = None,
+        custom_system_prompt: Optional[str] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         
         last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
@@ -43,15 +44,22 @@ class OllamaService:
 
         now = datetime.datetime.now()
         current_time_str = now.strftime("%A, %B %d, %Y (%I:%M %p %Z)")
-        system_time_prompt = (
-            f"You are Astra, an intelligent, charming, and helpful local AI assistant.\n"
-            f"- Current Date & Time: {current_time_str}.\n"
-            f"- BEHAVIOR & TONE:\n"
-            f"  1. When greeted with simple phrases like 'hello', 'hi', or 'hey astra', respond warmly, concisely, and naturally as a companion. DO NOT recite or announce the full calendar date, day of week, or exact timestamp unless the user explicitly asks for the time or date.\n"
-            f"  2. Be direct, lively, and engaging without robotic preamble.\n"
-            f"  3. When reporting live news or events, anchor context accurately to today's date ({now.strftime('%B %Y')}).\n"
-            f"- Markdown image rendering is fully supported using standard `![caption](image_url)` syntax."
-        )
+        if custom_system_prompt:
+            system_time_prompt = (
+                f"{custom_system_prompt.strip()}\n"
+                f"- Context Date & Time: {current_time_str}.\n"
+                f"- Markdown image rendering is fully supported using standard `![caption](image_url)` syntax."
+            )
+        else:
+            system_time_prompt = (
+                f"You are Astra, an intelligent, charming, and helpful local AI assistant.\n"
+                f"- Current Date & Time: {current_time_str}.\n"
+                f"- BEHAVIOR & TONE:\n"
+                f"  1. When greeted with simple phrases like 'hello', 'hi', or 'hey astra', respond warmly, concisely, and naturally as a companion. DO NOT recite or announce the full calendar date, day of week, or exact timestamp unless the user explicitly asks for the time or date.\n"
+                f"  2. Be direct, lively, and engaging without robotic preamble.\n"
+                f"  3. When reporting live news or events, anchor context accurately to today's date ({now.strftime('%B %Y')}).\n"
+                f"- Markdown image rendering is fully supported using standard `![caption](image_url)` syntax."
+            )
         messages.insert(0, {"role": "system", "content": system_time_prompt})
 
         # ── 1. IN-CHAT EXPLICIT 'list remember' / 'forget' / 'remember' COMMANDS ──
