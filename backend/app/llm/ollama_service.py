@@ -163,7 +163,8 @@ class OllamaService:
                     await vector_store.insert_memory(
                         memory_id=mem_id,
                         content=orig_fact,
-                        metadata={"source": conversation_id or "direct_command", "type": "explicit_remember"}
+                        metadata={"source": conversation_id or "direct_command", "type": "explicit_remember"},
+                        conversation_id=conversation_id
                     )
                     from backend.app.database.session import AsyncSessionLocal
                     from backend.app.models.entities import MemoryRecord
@@ -247,15 +248,15 @@ class OllamaService:
                     }
                     return
 
-        # ── 2. Memory Retrieval ──────────────────────────────────
+        # ── 2. Memory Retrieval - ISOLATED BY CONVERSATION ID ──
         if enable_memory and last_user_msg:
             try:
-                memories = await vector_store.search_memories(last_user_msg, limit=2)
+                memories = await vector_store.search_memories(last_user_msg, conversation_id=conversation_id, limit=2)
                 if memories:
                     mem_context = "\n".join([f"- {m['content']}" for m in memories])
                     messages.insert(1, {
                         "role": "system",
-                        "content": f"Relevant background memory about the user:\n{mem_context}"
+                        "content": f"Relevant background memory for THIS conversation:\n{mem_context}"
                     })
                     retrieved_memories = memories
             except Exception as e:

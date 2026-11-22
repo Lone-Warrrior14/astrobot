@@ -100,13 +100,35 @@ class ToolRegistry:
             res = await sdxl_service.generate_image(prompt=prompt)
             return res
 
-        elif name in ["searxng_search", "web_search"]:
+        elif name in ["searxng_search", "web_search", "openserp_search"]:
             if offline_mode:
                 return {"error": "Web search is disabled in Offline Mode.", "status": "error"}
             query = args.get("query", "").strip()
             if not query:
                 return {"error": "Empty query", "status": "error"}
-            
+
+            # ── 1. PRIMARY: OpenSERP with Real Browser Rendering (localhost:7000) ──
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    open_res = await client.get(f"http://localhost:7000/google/search", params={"text": query})
+                    if open_res.status_code == 200:
+                        open_data = open_res.json()
+                        raw_items = open_data.get("results", [])[:5]
+                        if raw_items:
+                            results = [
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("url", ""),
+                                    "content": item.get("description", item.get("snippet", ""))
+                                }
+                                for item in raw_items
+                            ]
+                            return {"results": results, "status": "success", "engine": "OpenSERP"}
+            except Exception as e:
+                # OpenSERP fallback
+                pass
+
+            # ── 2. SECONDARY: SearXNG Local Metasearch (localhost:8888) ──
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     params = {"q": query, "format": "json"}
@@ -119,10 +141,24 @@ class ToolRegistry:
                             for r in raw_results
                         ]
                         return {"results": results, "status": "success", "engine": "SearXNG"}
-                    else:
-                        return {"error": f"SearXNG responded with HTTP {res.status_code}", "status": "error"}
-            except Exception as e:
-                return {"error": f"SearXNG search error: {str(e)}", "status": "error"}
+            except Exception:
+                pass
+
+            # ── 3. TERTIARY: DuckDuckGo Direct Fallback (No Docker Required) ──
+            try:
+                from duckduckgo_search import DDGS
+                with DDGS() as ddgs:
+                    ddg_items = list(ddgs.text(query, max_results=4))
+                    if ddg_items:
+                        results = [
+                            {"title": r.get("title"), "url": r.get("href"), "content": r.get("body")}
+                            for r in ddg_items
+                        ]
+                        return {"results": results, "status": "success", "engine": "DuckDuckGo"}
+            except Exception as ddg_err:
+                return {"error": f"All search providers unavailable: {str(ddg_err)}", "status": "error"}
+
+            return {"error": "No search results found.", "status": "error"}
 
         elif name == "searxng_image_search":
             if offline_mode:

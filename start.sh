@@ -33,7 +33,17 @@ if [ ! "$(docker ps -q -f name=vibrant_greider)" ] && [ ! "$(docker ps -q -f anc
       qdrant/qdrant
 fi
 
-# 3. SearXNG metasearch instance (Port 8888)
+# 3. Search Services: OpenSERP (Port 7000) & SearXNG (Port 8888)
+if [ ! "$(docker ps -q -f name=local-openserp)" ]; then
+    if [ "$(docker ps -aq -f status=exited -f name=local-openserp)" ]; then
+        echo "Starting existing OpenSERP container..."
+        docker start local-openserp
+    else
+        echo "Launching OpenSERP container on port 7000..."
+        docker run -d --name local-openserp --restart unless-stopped -p 7000:7000 karust/openserp serve -a 0.0.0.0 -p 7000
+    fi
+fi
+
 if [ ! "$(docker ps -q -f name=local-searxng)" ]; then
     if [ "$(docker ps -aq -f status=exited -f name=local-searxng)" ]; then
         echo "Starting existing SearXNG container..."

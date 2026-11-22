@@ -150,16 +150,20 @@ class VectorStore:
         except Exception as e:
             print(f"Error deleting doc vectors: {e}")
 
-    async def insert_memory(self, memory_id: str, content: str, metadata: Dict[str, Any]):
+    async def insert_memory(self, memory_id: str, content: str, metadata: Dict[str, Any], conversation_id: Optional[str] = None):
         embedding = await self.get_embedding(content)
         point_id = abs(hash(memory_id)) % 2147483647
+        payload = {"memory_id": memory_id, "content": content, **metadata}
+        if conversation_id:
+            payload["conversation_id"] = conversation_id
+
         self.client.upsert(
             collection_name=settings.QDRANT_COLLECTION_MEMORY,
             points=[
                 PointStruct(
                     id=point_id,
                     vector=embedding,
-                    payload={"memory_id": memory_id, "content": content, **metadata}
+                    payload=payload
                 )
             ]
         )
@@ -174,19 +178,50 @@ class VectorStore:
         except Exception as e:
             print(f"Error deleting memory vector: {e}")
 
-    async def search_memories(self, query: str, limit: int = 3) -> List[Dict[str, Any]]:
+    async def delete_conversation_memories(self, conversation_id: str):
+        """Clean up all isolated memories tied to a specific conversation."""
+        try:
+            self.client.delete(
+                collection_name=settings.QDRANT_COLLECTION_MEMORY,
+                points_selector=Filter(
+                    must=[
+                        FieldCondition(
+                            key="conversation_id",
+                            match=MatchValue(value=conversation_id)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            print(f"Error deleting conversation memories: {e}")
+
+    async def search_memories(self, query: str, conversation_id: Optional[str] = None, limit: int = 3) -> List[Dict[str, Any]]:
         embedding = await self.get_embedding(query)
+        qdrant_filter = None
+        if conversation_id:
+            # Strictly isolate memories to this specific chat session
+            qdrant_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="conversation_id",
+                        match=MatchValue(value=conversation_id)
+                    )
+                ]
+            )
+
         try:
             if hasattr(self.client, "query_points"):
                 results = self.client.query_points(
                     collection_name=settings.QDRANT_COLLECTION_MEMORY,
                     query=embedding,
+                    query_filter=qdrant_filter,
                     limit=limit
                 ).points
             else:
                 results = self.client.search(
                     collection_name=settings.QDRANT_COLLECTION_MEMORY,
                     query_vector=embedding,
+                    query_filter=qdrant_filter,
                     limit=limit
                 )
             return [{"score": r.score, **r.payload} for r in results if getattr(r, 'score', 0) > 0.4]
