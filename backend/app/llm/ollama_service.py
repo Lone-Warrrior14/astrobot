@@ -393,8 +393,10 @@ class OllamaService:
 
             # B. Keyword 'research' Triggered
             elif is_research_triggered and enable_search:
-                match = re.search(r'(?:/research|research)\s*[:\-\s]?\s*(.*)', last_user_msg, re.IGNORECASE)
-                query_to_search = match.group(1).strip() if match and match.group(1).strip() else last_user_msg
+                # Strip 'research' keyword regardless of whether it was placed at start, end, or middle
+                clean_query_candidate = re.sub(r'\b/?research\b', '', last_user_msg, flags=re.IGNORECASE).strip()
+                clean_query_candidate = re.sub(r'\s+', ' ', clean_query_candidate).strip()
+                query_to_search = clean_query_candidate if clean_query_candidate else last_user_msg
                 
                 is_image_search = any(w in lower_msg for w in ["image", "images", "picture", "pictures", "photo", "photos", "wallpaper"])
 
@@ -416,12 +418,10 @@ class OllamaService:
                         })
                         sources.extend([{"filename": f"Image: {r['title']}", "score": 1.0, "url": r['img_src']} for r in img_res["results"]])
                 else:
-                    clean_query = re.sub(r'^(what\s+are\s+the|what\s+is\s+the|tell\s+me\s+the|give\s+me\s+the|show\s+me\s+the|latest|current)\s+', '', query_to_search, flags=re.IGNORECASE).strip()
-                    
                     if any(w in query_to_search.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
                         search_query_expanded = "top breaking world news headlines today"
                     else:
-                        search_query_expanded = clean_query or query_to_search
+                        search_query_expanded = query_to_search
 
                     yield {"delta": f"🔍 *Live web research via OpenSERP/SearXNG for:* `{search_query_expanded}`...\n\n", "done": False}
                     search_res = await tool_registry.execute_tool("web_search", {"query": search_query_expanded})
@@ -437,9 +437,10 @@ class OllamaService:
                                 f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}):\n\n"
                                 f"{results_text}\n\n"
                                 f"CRITICAL DIRECTIVE:\n"
-                                f"1. The user explicitly asked for research/news on '{search_query_expanded}'. You MUST provide an immediate, rich, structured, and informative summary of the top findings and stories found in the search results.\n"
-                                f"2. DO NOT reply with a passive offer or question like 'I can look up the news for you'. The search has ALREADY been performed.\n"
-                                f"3. Deliver a comprehensive breakdown organized by topic with bullet points, context, and clear source citations for each story/topic."
+                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost (e.g. state explicitly whether Drew McIntyre is the current WWE champion or not).\n"
+                                f"2. Base your answer on the live search results above.\n"
+                                f"3. Provide relevant context and citations from the sources above, but do NOT paste raw, long URL strings directly into the text (sources will be cited in the footer).\n"
+                                f"4. Deliver a concise, direct, and fact-focused answer."
                             )
                         })
                         sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in search_res["results"][:6]])

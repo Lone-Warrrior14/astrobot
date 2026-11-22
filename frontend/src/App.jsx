@@ -1020,6 +1020,20 @@ export default function App() {
                         remarkPlugins={[remarkGfm]} 
                         rehypePlugins={[rehypeHighlight]}
                         components={{
+                          a({ href, children, ...props }) {
+                            const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
+                            return (
+                              <a 
+                                href={href} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="chat-inline-link"
+                                {...props}
+                              >
+                                {isBareLongUrl ? '🌐 [Source Link]' : children}
+                              </a>
+                            );
+                          },
                           pre({ children, ...props }) {
                             return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
                           },
