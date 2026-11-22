@@ -232,11 +232,25 @@ class ToolRegistry:
                             html_text = data.get("parse", {}).get("text", {}).get("*", "")
                             if html_text:
                                 soup = BeautifulSoup(html_text, "html.parser")
+                                
+                                # Extract Infobox key facts summary at the very top (Status, Killed By, Death, Affiliations, etc.)
+                                infobox_facts = []
+                                for row in soup.find_all(['div', 'tr'], class_=re.compile(r'(pi-item|infobox)')):
+                                    label = row.find(class_=re.compile(r'(pi-data-label|label)'))
+                                    val = row.find(class_=re.compile(r'(pi-data-value|value)'))
+                                    if label and val:
+                                        infobox_facts.append(f"{label.get_text(strip=True)}: {val.get_text(separator=' ', strip=True)}")
+                                
+                                infobox_header = ""
+                                if infobox_facts:
+                                    infobox_header = "KEY PROFILE FACTS / INFOBOX:\n" + "\n".join([f"- {f}" for f in infobox_facts]) + "\n\n"
+
                                 for el in soup(["script", "style", "nav", "noscript"]):
                                     el.decompose()
                                 extracted = soup.get_text(separator=" ", strip=True)
                                 if len(extracted) > 100:
-                                    return {"content": extracted[:15000], "url": url, "status": "success", "engine": "MediaWikiAPI"}
+                                    full_content = infobox_header + extracted
+                                    return {"content": full_content[:15000], "url": url, "status": "success", "engine": "MediaWikiAPI"}
                 except Exception as ex:
                     print(f"MediaWiki API extraction error: {ex}")
 

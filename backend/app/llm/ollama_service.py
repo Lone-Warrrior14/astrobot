@@ -333,17 +333,28 @@ class OllamaService:
                             f"4. Cite the source URL ({target_url})."
                         )
                     else:
-                        # For follow-up questions, use BGE cross-encoder to isolate top relevant passages from the page
+                        # For follow-up questions, always preserve the key infobox / summary header plus the top BGE-reranked paragraphs
                         relevant_text = page_content[:5000]
                         try:
-                            if vector_store.reranker and len(page_content) > 1000:
-                                # Split page into coherent paragraphs
-                                raw_paras = [p.strip() for p in page_content.split('\n') if len(p.strip()) > 40]
-                                if len(raw_paras) > 3:
-                                    scores = list(vector_store.reranker.rerank(last_user_msg, raw_paras[:40]))
-                                    ranked = sorted(zip(scores, raw_paras[:40]), key=lambda x: x[0], reverse=True)
+                            # If infobox header exists, keep it as mandatory anchor
+                            infobox_prefix = ""
+                            body_text = page_content
+                            if "KEY PROFILE FACTS / INFOBOX:" in page_content:
+                                parts = page_content.split("\n\n", 1)
+                                infobox_prefix = parts[0] + "\n\n"
+                                body_text = parts[1] if len(parts) > 1 else page_content
+
+                            if vector_store.reranker and len(body_text) > 500:
+                                raw_paras = [p.strip() for p in body_text.split('\n') if len(p.strip()) > 35]
+                                if len(raw_paras) > 2:
+                                    scores = list(vector_store.reranker.rerank(last_user_msg, raw_paras[:60]))
+                                    ranked = sorted(zip(scores, raw_paras[:60]), key=lambda x: x[0], reverse=True)
                                     top_paras = [text for _, text in ranked[:6]]
-                                    relevant_text = "\n\n".join(top_paras)
+                                    relevant_text = infobox_prefix + "\n\n".join(top_paras)
+                                else:
+                                    relevant_text = infobox_prefix + body_text[:4000]
+                            else:
+                                relevant_text = infobox_prefix + body_text[:4000]
                         except Exception as rerank_ex:
                             print(f"Reranking error on page content: {rerank_ex}")
 
