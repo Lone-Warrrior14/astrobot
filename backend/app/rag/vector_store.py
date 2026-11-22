@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from fastembed import TextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from backend.app.core.config import settings
 
 class VectorStore:
@@ -10,6 +11,15 @@ class VectorStore:
         # FastEmbed BGE small has 384 dimensions - ultra lightweight, fast, CPU/GPU efficient
         self.vector_size = 384
         self.embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        
+        # State-of-the-Art BAAI BGE-Reranker Cross-Encoder via FastEmbed ONNX
+        try:
+            self.reranker = TextCrossEncoder(model_name="BAAI/bge-reranker-base")
+            print("✓ BAAI/bge-reranker-base Cross-Encoder loaded successfully.")
+        except Exception as e:
+            print(f"Notice: Failed to initialize BGE reranker ({e}), continuing with standard vector similarity.")
+            self.reranker = None
+            
         self._ensure_collections()
 
     def _ensure_collections(self):
@@ -80,21 +90,46 @@ class VectorStore:
         )
 
         try:
+            # Over-fetch candidate chunks from Qdrant vector search to feed the reranker
+            candidate_limit = max(limit * 3, 12) if self.reranker else limit
+
             if hasattr(self.client, "query_points"):
                 results = self.client.query_points(
                     collection_name=settings.QDRANT_COLLECTION_DOCS,
                     query=embedding,
                     query_filter=qdrant_filter,
-                    limit=limit
+                    limit=candidate_limit
                 ).points
             else:
                 results = self.client.search(
                     collection_name=settings.QDRANT_COLLECTION_DOCS,
                     query_vector=embedding,
                     query_filter=qdrant_filter,
-                    limit=limit
+                    limit=candidate_limit
                 )
-            return [{"score": r.score, **r.payload} for r in results]
+
+            candidates = [{"vector_score": r.score, **r.payload} for r in results]
+            if not candidates:
+                return []
+
+            # ── 2-Stage RAG: Precision Cross-Encoder Re-Ranking via BAAI/bge-reranker-base ──
+            if self.reranker and len(candidates) > 1:
+                texts = [c.get("text", "") for c in candidates]
+                try:
+                    rerank_scores = list(self.reranker.rerank(query, texts))
+                    for idx, c in enumerate(candidates):
+                        c["rerank_score"] = float(rerank_scores[idx])
+                        c["score"] = c["rerank_score"]
+                    candidates.sort(key=lambda x: x.get("rerank_score", -999.0), reverse=True)
+                except Exception as rank_err:
+                    print(f"BGE rerank error, falling back to vector score: {rank_err}")
+                    for c in candidates:
+                        c["score"] = c.get("vector_score", 0.0)
+            else:
+                for c in candidates:
+                    c["score"] = c.get("vector_score", 0.0)
+
+            return candidates[:limit]
         except Exception as e:
             print(f"Error querying isolated documents: {e}")
             return []
