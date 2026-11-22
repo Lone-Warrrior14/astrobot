@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
 
@@ -47,6 +47,7 @@ export default function App() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     fetchConversations();
@@ -231,7 +232,9 @@ export default function App() {
     const isResearch = /\b(research|\/research)\b/i.test(userText);
     if (isUrl) {
       const match = userText.match(/(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/i);
-      setResearchState({ type: 'url', query: match ? match[1] : 'URL' });
+      const matchedUrl = match ? match[1] : 'URL';
+      const isYt = /(?:youtube\.com|youtu\.be)/i.test(matchedUrl);
+      setResearchState({ type: isYt ? 'youtube' : 'url', query: matchedUrl });
     } else if (isResearch) {
       const cleanQ = userText.replace(/^\/?research\s*[:\-\s]?\s*/i, '').trim();
       setResearchState({ type: 'search', query: cleanQ || 'Web' });
@@ -247,9 +250,17 @@ export default function App() {
     const assistantId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', sources: null, thinking_content: null }]);
 
+    // Setup AbortController for cancelable generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversation_id: isIncognito ? null : activeConvId,
@@ -315,12 +326,70 @@ export default function App() {
       fetchConversations();
 
     } catch (err) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `Error: ${err.message}` }]);
+      if (err.name === 'AbortError') {
+        console.log('Stream generation aborted by user.');
+      } else {
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `Error: ${err.message}` }]);
+      }
     } finally {
+      abortControllerRef.current = null;
       setIsStreaming(false);
       setIsGeneratingInChatImage(false);
       setResearchState(null);
       setIsAstraThinking(false);
+    }
+  };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setIsGeneratingInChatImage(false);
+    setResearchState(null);
+    setIsAstraThinking(false);
+  };
+
+  const handleExportChat = (format = 'markdown') => {
+    if (!messages.length) {
+      alert('No messages to export in this conversation.');
+      return;
+    }
+
+    const currentConv = conversations.find(c => c.id === activeConvId);
+    const title = currentConv?.title || 'Astra_Talk_Chat';
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}_${timestamp}`;
+
+    if (format === 'json') {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(messages, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `${filename}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } else {
+      let md = `# ${title}\n*Exported from Astra Talk on ${new Date().toLocaleString()}*\n*Model: ${selectedModel}*\n\n---\n\n`;
+      messages.forEach((m) => {
+        const roleName = m.role === 'user' ? '👤 User' : '🤖 Astra';
+        md += `### ${roleName}\n\n${m.content}\n\n`;
+        if (m.sources && m.sources.length) {
+          md += `**Sources:**\n` + m.sources.map(s => `- [${s.filename}](${s.url || '#'})`).join('\n') + `\n\n`;
+        }
+        md += `---\n\n`;
+      });
+
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', `${filename}.md`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -820,6 +889,25 @@ export default function App() {
               <Paperclip size={14} /> Attach File
               <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".pdf,.docx,.txt,.csv,.xlsx,.md" />
             </label>
+
+            <button
+              onClick={() => handleExportChat('markdown')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                background: 'var(--bg-tertiary)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer'
+              }}
+              title="Export Conversation to Markdown"
+            >
+              <Download size={14} /> Export
+            </button>
           </div>
         </header>
 
@@ -973,17 +1061,25 @@ export default function App() {
                   </div>
                   <div className="message-bubble">
                     <div className="research-loading-box">
-                      {researchState.type === 'url' ? (
+                      {researchState.type === 'youtube' ? (
+                        <Video size={24} className="research-spinner" color="#ef4444" />
+                      ) : researchState.type === 'url' ? (
                         <Globe size={24} className="research-spinner" />
                       ) : (
                         <Search size={24} className="research-spinner" />
                       )}
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '2px' }}>
-                          {researchState.type === 'url' ? '🌐 Fetching & Reading Web Page...' : '🔍 Researching Live Web & News...'}
+                          {researchState.type === 'youtube'
+                            ? '📺 Extracting YouTube Transcript & Video...'
+                            : researchState.type === 'url'
+                            ? '🌐 Fetching & Reading Web Page...'
+                            : '🔍 Researching Live Web & News...'}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {researchState.type === 'url' ? (
+                          {researchState.type === 'youtube' ? (
+                            <>Transcribing spoken audio & captions from <code style={{ color: '#ef4444' }}>{researchState.query.slice(0, 50)}</code></>
+                          ) : researchState.type === 'url' ? (
                             <>Analyzing content from <code style={{ color: 'var(--accent)' }}>{researchState.query.slice(0, 50)}</code></>
                           ) : (
                             <>Searching multi-engine OpenSERP / SearXNG for: <strong style={{ color: 'var(--accent)' }}>"{researchState.query}"</strong></>
@@ -1135,13 +1231,24 @@ export default function App() {
                     }
                   }}
                 />
-                <button 
-                  className="send-btn" 
-                  onClick={handleSend} 
-                  disabled={(!input.trim() && !selectedFile && !selectedImage) || isStreaming || isVisionAnalyzing}
-                >
-                  <Send size={15} />
-                </button>
+                {isStreaming ? (
+                  <button 
+                    className="send-btn" 
+                    onClick={handleStopGeneration}
+                    style={{ background: '#ef4444' }}
+                    title="Stop Generating (Cancel Stream)"
+                  >
+                    <StopCircle size={15} />
+                  </button>
+                ) : (
+                  <button 
+                    className="send-btn" 
+                    onClick={handleSend} 
+                    disabled={(!input.trim() && !selectedFile && !selectedImage) || isVisionAnalyzing}
+                  >
+                    <Send size={15} />
+                  </button>
+                )}
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                 Upload files for RAG or images for vision right here. Images generated safely via Realistic Vision v6 (~6s).

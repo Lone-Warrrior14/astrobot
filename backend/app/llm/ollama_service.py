@@ -317,21 +317,36 @@ class OllamaService:
             # A. Explicit URL Pasted (or follow-up questions referencing a URL from earlier in the chat)
             if (url_match or prior_url_match) and enable_search:
                 target_url = url_match.group(1).strip() if url_match else prior_url_match
+                is_yt = bool(re.search(r'(?:youtube\.com|youtu\.be)', target_url, re.IGNORECASE))
                 if url_match:
-                    yield {"delta": f"🌐 *Fetching and analyzing live content from:* `{target_url}`...\n\n", "done": False}
+                    if is_yt:
+                        yield {"delta": f"📺 *Extracting YouTube transcript and analyzing video:* `{target_url}`...\n\n", "done": False}
+                    else:
+                        yield {"delta": f"🌐 *Fetching and analyzing live content from:* `{target_url}`...\n\n", "done": False}
                 extract_res = await tool_registry.execute_tool("extract_url_content", {"url": target_url})
                 if extract_res.get("status") == "success" and extract_res.get("content"):
                     page_content = extract_res.get("content")
                     if url_match:
-                        directive = (
-                            f"EXTRACTED CONTENT FROM URL ({target_url}):\n\n"
-                            f"{page_content[:6000]}\n\n"
-                            f"CRITICAL DIRECTIVE:\n"
-                            f"1. The user provided the URL ({target_url}). Provide an immediate, comprehensive, well-structured summary and deep analysis of the content.\n"
-                            f"2. Structure your response with clear sections: Overview, Key Highlights / Takeaways, Detailed Breakdown, and Conclusion.\n"
-                            f"3. Base every fact strictly on the extracted text above. Do NOT invent alternate game storylines.\n"
-                            f"4. Cite the source URL ({target_url})."
-                        )
+                        if is_yt or extract_res.get("engine") == "YouTubeTranscript":
+                            directive = (
+                                f"EXTRACTED YOUTUBE VIDEO TRANSCRIPT ({target_url}):\n\n"
+                                f"{page_content[:6500]}\n\n"
+                                f"CRITICAL DIRECTIVE:\n"
+                                f"1. The user provided a YouTube video link ({target_url}). Provide an immediate, thorough, well-structured breakdown of the video's content.\n"
+                                f"2. Structure your response with clear sections: Video Overview, Key Topics & Timestamps (using the timestamps from the transcript), Main Takeaways, and Conclusion.\n"
+                                f"3. Base every point directly on the spoken transcript provided above.\n"
+                                f"4. Cite the video source URL ({target_url})."
+                            )
+                        else:
+                            directive = (
+                                f"EXTRACTED CONTENT FROM URL ({target_url}):\n\n"
+                                f"{page_content[:6000]}\n\n"
+                                f"CRITICAL DIRECTIVE:\n"
+                                f"1. The user provided the URL ({target_url}). Provide an immediate, comprehensive, well-structured summary and deep analysis of the content.\n"
+                                f"2. Structure your response with clear sections: Overview, Key Highlights / Takeaways, Detailed Breakdown, and Conclusion.\n"
+                                f"3. Base every fact strictly on the extracted text above. Do NOT invent alternate game storylines.\n"
+                                f"4. Cite the source URL ({target_url})."
+                            )
                     else:
                         # For follow-up questions, always preserve the key infobox / summary header plus the top BGE-reranked paragraphs
                         relevant_text = page_content[:5000]

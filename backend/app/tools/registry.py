@@ -216,6 +216,41 @@ class ToolRegistry:
             if not url.startswith("http://") and not url.startswith("https://"):
                 url = f"https://{url}"
 
+            # 0. YouTube Video URL Transcript Extraction (Fast, 0 API key required, 100% lightweight)
+            yt_match = re.search(r'(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})', url)
+            if yt_match:
+                video_id = yt_match.group(1)
+                try:
+                    from youtube_transcript_api import YouTubeTranscriptApi
+                    api = YouTubeTranscriptApi()
+                    fetched = api.fetch(video_id)
+                    snippets = fetched.snippets if hasattr(fetched, "snippets") else fetched
+                    
+                    transcript_lines = []
+                    for s in snippets:
+                        text = getattr(s, "text", "") if hasattr(s, "text") else s.get("text", "")
+                        start_time = getattr(s, "start", 0) if hasattr(s, "start") else s.get("start", 0)
+                        minutes = int(start_time // 60)
+                        seconds = int(start_time % 60)
+                        transcript_lines.append(f"[{minutes:02d}:{seconds:02d}] {text}")
+
+                    transcript_text = "\n".join(transcript_lines)
+                    if transcript_text:
+                        content_block = (
+                            f"YOUTUBE VIDEO TRANSCRIPT (Video ID: `{video_id}`, Source: {url}):\n\n"
+                            f"{transcript_text[:12000]}"
+                        )
+                        return {
+                            "content": content_block,
+                            "url": url,
+                            "status": "success",
+                            "engine": "YouTubeTranscript",
+                            "video_id": video_id
+                        }
+                except Exception as yt_err:
+                    print(f"YouTube transcript extraction notice ({video_id}): {yt_err}")
+                    # If captions disabled or private, continue to standard web scraping
+
             # 1. MediaWiki / Fandom / Wikipedia Action API Direct Extraction
             # Fandom and Wikipedia wikis provide rich JSON endpoints with full article text that bypass Cloudflare 403 blocks completely
             fandom_match = re.search(r'https?://([^/]+)/wiki/([^/?#]+)', url)
