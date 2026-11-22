@@ -360,11 +360,14 @@ class OllamaService:
                                 body_text = parts[1] if len(parts) > 1 else page_content
 
                             if vector_store.reranker and len(body_text) > 500:
-                                raw_paras = [p.strip() for p in body_text.split('\n') if len(p.strip()) > 35]
+                                raw_paras = [p.strip() for p in body_text.split('\n\n') if len(p.strip()) > 35]
+                                if not raw_paras or len(raw_paras) < 3:
+                                    raw_paras = [p.strip() for p in body_text.split('\n') if len(p.strip()) > 35]
+
                                 if len(raw_paras) > 2:
-                                    scores = list(vector_store.reranker.rerank(last_user_msg, raw_paras[:60]))
-                                    ranked = sorted(zip(scores, raw_paras[:60]), key=lambda x: x[0], reverse=True)
-                                    top_paras = [text for _, text in ranked[:6]]
+                                    scores = list(vector_store.reranker.rerank(last_user_msg, raw_paras[:80]))
+                                    ranked = sorted(zip(scores, raw_paras[:80]), key=lambda x: x[0], reverse=True)
+                                    top_paras = [text for _, text in ranked[:5]]
                                     relevant_text = infobox_prefix + "\n\n".join(top_paras)
                                 else:
                                     relevant_text = infobox_prefix + body_text[:4000]
