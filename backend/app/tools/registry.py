@@ -227,14 +227,18 @@ class ToolRegistry:
                     snippets = fetched.snippets if hasattr(fetched, "snippets") else fetched
                     
                     transcript_lines = []
-                    for s in snippets:
-                        text = getattr(s, "text", "") if hasattr(s, "text") else s.get("text", "")
-                        start_time = getattr(s, "start", 0) if hasattr(s, "start") else s.get("start", 0)
+                    # Group every 4-5 snippets into coherent, readable timestamped paragraphs
+                    for i in range(0, len(snippets), 4):
+                        batch = snippets[i:i+4]
+                        first_s = batch[0]
+                        start_time = getattr(first_s, "start", 0) if hasattr(first_s, "start") else first_s.get("start", 0)
                         minutes = int(start_time // 60)
                         seconds = int(start_time % 60)
-                        transcript_lines.append(f"[{minutes:02d}:{seconds:02d}] {text}")
+                        batch_text = " ".join([getattr(b, "text", "") if hasattr(b, "text") else b.get("text", "") for b in batch]).strip()
+                        if batch_text:
+                            transcript_lines.append(f"[{minutes:02d}:{seconds:02d}] {batch_text}")
 
-                    transcript_text = "\n".join(transcript_lines)
+                    transcript_text = "\n\n".join(transcript_lines)
                     if transcript_text:
                         content_block = (
                             f"YOUTUBE VIDEO TRANSCRIPT (Video ID: `{video_id}`, Source: {url}):\n\n"
