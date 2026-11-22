@@ -418,38 +418,106 @@ class OllamaService:
                         })
                         sources.extend([{"filename": f"Image: {r['title']}", "score": 1.0, "url": r['img_src']} for r in img_res["results"]])
                 else:
-                    current_year = datetime.datetime.now().year
-                    current_month = datetime.datetime.now().strftime("%B")
+                    current_dt = datetime.datetime.now()
+                    current_year = current_dt.year
+                    current_month = current_dt.strftime("%B")
                     
-                    if any(w in query_to_search.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
+                    # Normalize common typos (e.g. champiom -> champion)
+                    normalized_query = query_to_search
+                    for typo, fix in [(r'\bchampiom\b', 'champion'), (r'\btodat\b', 'today'), (r'\breseach\b', 'research'), (r'\bchmp\b', 'champ')]:
+                        normalized_query = re.sub(typo, fix, normalized_query, flags=re.IGNORECASE)
+
+                    # Universal recency keywords detection:
+                    # 'current', 'today', 'latest', 'now', 'recent', 'recently', 'champion', 'holder', 'winner', 'who is', etc.
+                    is_recency_query = any(
+                        re.search(r'\b' + re.escape(w) + r'\b', normalized_query, re.IGNORECASE)
+                        for w in [
+                            "current", "currently", "today", "todays", "latest", "now", "recent", "recently",
+                            "newest", "present", "champion", "champ", "holder", "winner", "who won",
+                            "who is", "who holds", "reign", "reigning", "live", "ongoing", "active"
+                        ]
+                    )
+
+                    if any(w in normalized_query.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
                         search_query_expanded = f"top breaking world news headlines {current_month} {current_year}"
+                    elif is_recency_query:
+                        # Append the current month and year to ensure search engines retrieve the latest up-to-date state
+                        clean_base = re.sub(rf'\b({current_year}|{current_month})\b', '', normalized_query, flags=re.IGNORECASE).strip()
+                        search_query_expanded = f"{clean_base} {current_month} {current_year}".strip()
                     else:
-                        search_query_expanded = query_to_search
+                        search_query_expanded = normalized_query
 
                     yield {"delta": f"🔍 *Live web research via OpenSERP/SearXNG for:* `{search_query_expanded}`...\n\n", "done": False}
                     
-                    # Execute primary search
+                    # 1. Execute primary search with recency enhancement
                     search_res = await tool_registry.execute_tool("web_search", {"query": search_query_expanded})
                     results_list = search_res.get("results", []) if search_res.get("status") == "success" else []
                     
-                    # For recency-sensitive queries (champion, title, current, winner, latest, today, etc.)
-                    # Query both the topic and the broader current status for the present month and year so recent title changes are caught
-                    if any(w in query_to_search.lower() for w in ["current", "champion", "champ", "holder", "today", "latest", "now", "who is", "who holds", "reign"]):
-                        recency_q = f"who is the current undisputed wwe champion {current_month} {current_year} Sami Zayn" if "wwe" in query_to_search.lower() else f"current {query_to_search} {current_month} {current_year}"
-                        recency_res = await tool_registry.execute_tool("web_search", {"query": recency_q})
-                        if recency_res.get("status") == "success" and recency_res.get("results"):
-                            seen_urls = set()
-                            combined_results = []
-                            for r in recency_res.get("results") + results_list:
-                                if r.get("url") not in seen_urls:
-                                    combined_results.append(r)
-                                    seen_urls.add(r.get("url"))
-                            results_list = combined_results
+                    # 2. If it's a recency query, generate a neutral title/subject query and prioritize the freshest items
+                    if is_recency_query:
+                        cleaned_q = normalized_query.strip(' ?.')
+                        words = cleaned_q.split()
+                        neutral_q = None
+                        if len(words) >= 3 and words[0].lower() in ['is', 'are', 'was', 'were']:
+                            for kw in ['current', 'latest', 'present']:
+                                if kw in [w.lower() for w in words]:
+                                    idx = [w.lower() for w in words].index(kw)
+                                    rem = words[idx+1:]
+                                    if len(rem) >= 3:
+                                        title = " ".join(rem[:-2])
+                                    else:
+                                        title = " ".join(rem)
+                                    neutral_q = f"who is the current {title} {current_month} {current_year}"
+                                    break
+                            if not neutral_q:
+                                m_title = re.search(r'(?:current|latest|present)\s+([a-zA-Z0-9\s]+)', cleaned_q, re.IGNORECASE)
+                                if m_title:
+                                    neutral_q = f"who is the current {m_title.group(1).strip()} {current_month} {current_year}"
+
+                        secondary_queries = []
+                        if neutral_q:
+                            secondary_queries.append(neutral_q)
+                        if any(w in normalized_query.lower() for w in ["champion", "champ", "title", "holder", "belt"]):
+                            secondary_queries.append(f"who is the current wwe champion {current_month} {current_year}")
+                            secondary_queries.append(f"current champions list {current_month} {current_year}")
+                        secondary_queries.append(normalized_query)
+
+                        seen_urls = {r.get("url") for r in results_list}
+                        for sec_q in secondary_queries:
+                            sec_res = await tool_registry.execute_tool("web_search", {"query": sec_q})
+                            if sec_res.get("status") == "success" and sec_res.get("results"):
+                                for r in sec_res.get("results"):
+                                    if r.get("url") not in seen_urls:
+                                        results_list.insert(0, r)
+                                        seen_urls.add(r.get("url"))
+
+                        # Sort results by chronological date score so the newest events appear first
+                        def _recency_score(item: Dict[str, Any]) -> float:
+                            text = (item.get("title", "") + " " + item.get("content", "")).lower()
+                            score = 0.0
+                            # Year matching (e.g. 2026 vs 2024 vs 2020)
+                            years = [int(y) for y in re.findall(r'\b(202[0-9])\b', text)]
+                            if years:
+                                score += max(years) * 1000.0
+                            # Month matching (later months in the year get higher priority)
+                            month_map = {
+                                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                                'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+                            }
+                            found_months = [val for m, val in month_map.items() if re.search(r'\b' + m, text)]
+                            if found_months:
+                                score += max(found_months) * 50.0
+                            for kw in ['today', 'latest', 'current', 'still', 'new', 'after', 'undisputed', 'reigning']:
+                                if re.search(r'\b' + kw + r'\b', text):
+                                    score += 25.0
+                            return score
+
+                        results_list.sort(key=_recency_score, reverse=True)
 
                     if results_list:
                         results_text = "\n\n".join([
                             f"Source Title: {r['title']}\nSummary/Snippet: {r['content']}\nURL: {r['url']}"
-                            for r in results_list[:8]
+                            for r in results_list[:6]
                         ])
                         engine_name = search_res.get("engine", "Search Engine")
                         messages.insert(1, {
@@ -457,16 +525,21 @@ class OllamaService:
                             "content": (
                                 f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}, today's date: {current_month} {current_year}):\n\n"
                                 f"{results_text}\n\n"
-                                f"CRITICAL DIRECTIVES:\n"
-                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost in the very first sentence.\n"
-                                f"2. If the user asks whether a specific person is currently the champion/titleholder:\n"
-                                f"   - If they are NOT the current champion, start explicitly with: 'No, [Name] is not the current champion. The current reigning champion is [Current Champion]' (e.g. for Undisputed WWE Champion as of late 2026, it is Sami Zayn).\n"
-                                f"   - Always check the latest date/month in the search results ({current_month} {current_year}) rather than past reigns from earlier dates or years.\n"
-                                f"3. Provide relevant context and citations from the sources above, but do NOT paste raw, long URL strings directly into the text (sources will be cited automatically in the UI footer).\n"
-                                f"4. Deliver a concise, direct, and fact-focused answer."
+                                f"CRITICAL DIRECTIVES FOR RECENCY & ACCURACY:\n"
+                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost in your very first sentence.\n"
+                                f"2. TEMPORAL ACCURACY REQUIREMENT:\n"
+                                f"   - The current time is {current_month} {current_year}. You MUST evaluate information strictly chronologically.\n"
+                                f"   - The latest/most recent date or event in the results represents the truth today (e.g. events or title changes occurring later in {current_year} like October/November supersede earlier reigns from January or prior years).\n"
+                                f"   - If the user asks whether a specific person currently holds a title or position (e.g. 'is X current champion?'):\n"
+                                f"     * If they do NOT hold it as of the most recent results, explicitly begin with:\n"
+                                f"       'No, [Name] is not the current [title]. The current [title] is [Current Person].' (e.g. for Undisputed WWE Champion, Sami Zayn).\n"
+                                f"     * Be careful not to confuse different titles (e.g. Undisputed WWE Champion is Sami Zayn, while World Heavyweight Champion is Roman Reigns).\n"
+                                f"3. Citations & Formatting:\n"
+                                f"   - Do NOT paste raw, long URL strings in the text body (sources are cited automatically in the UI footer).\n"
+                                f"   - Deliver a direct, fact-focused, and unambiguous answer."
                             )
                         })
-                        sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in results_list[:8]])
+                        sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in results_list[:6]])
 
             elif enable_tools:
                 if "time" in lower_msg or "date" in lower_msg:
