@@ -5,6 +5,7 @@ import os
 import json
 import psutil
 import httpx
+import re
 from typing import Dict, Any, List
 from backend.app.core.config import settings
 
@@ -215,7 +216,31 @@ class ToolRegistry:
             if not url.startswith("http://") and not url.startswith("https://"):
                 url = f"https://{url}"
 
-            # 1. Primary: Browser Impersonation via curl_cffi (bypasses Cloudflare 403 / anti-bot on Fandom, Wikipedia, news sites)
+            # 1. MediaWiki / Fandom / Wikipedia Action API Direct Extraction
+            # Fandom and Wikipedia wikis provide rich JSON endpoints with full article text that bypass Cloudflare 403 blocks completely
+            fandom_match = re.search(r'https?://([^/]+)/wiki/([^/?#]+)', url)
+            if fandom_match:
+                domain, page_title = fandom_match.group(1), fandom_match.group(2)
+                api_url = f"https://{domain}/api.php?action=parse&page={page_title}&prop=text&format=json"
+                try:
+                    from bs4 import BeautifulSoup
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        api_res = await client.get(api_url, headers=headers)
+                        if api_res.status_code == 200:
+                            data = api_res.json()
+                            html_text = data.get("parse", {}).get("text", {}).get("*", "")
+                            if html_text:
+                                soup = BeautifulSoup(html_text, "html.parser")
+                                for el in soup(["script", "style", "nav", "noscript"]):
+                                    el.decompose()
+                                extracted = soup.get_text(separator=" ", strip=True)
+                                if len(extracted) > 100:
+                                    return {"content": extracted[:15000], "url": url, "status": "success", "engine": "MediaWikiAPI"}
+                except Exception as ex:
+                    print(f"MediaWiki API extraction error: {ex}")
+
+            # 2. Browser Impersonation via curl_cffi (bypasses Cloudflare 403 / anti-bot on other news & web sites)
             try:
                 from curl_cffi.requests import AsyncSession
                 from bs4 import BeautifulSoup
@@ -225,7 +250,6 @@ class ToolRegistry:
                     res = await session.get(url, impersonate="chrome120", timeout=15.0)
                     if res.status_code == 200 and len(res.text.strip()) > 100:
                         soup = BeautifulSoup(res.text, "html.parser")
-                        # For Fandom / MediaWiki sites, extract primary article body directly
                         article_elem = soup.find("div", class_="mw-parser-output") or soup.find("article") or soup.find("main")
                         if article_elem:
                             for el in article_elem(["script", "style", "nav", "noscript"]):
@@ -234,12 +258,10 @@ class ToolRegistry:
                             if len(extracted_text) > 100:
                                 return {"content": extracted_text[:14000], "url": url, "status": "success", "engine": "BrowserImpersonation"}
 
-                        # Trafilatura high quality clean text extraction fallback
                         clean_text = trafilatura.extract(res.text, include_comments=False, include_tables=True)
                         if clean_text and len(clean_text) > 100:
                             return {"content": clean_text[:14000], "url": url, "status": "success", "engine": "Trafilatura"}
 
-                        # BeautifulSoup fallback
                         for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
                             element.decompose()
                         text = soup.get_text(separator="\n", strip=True)

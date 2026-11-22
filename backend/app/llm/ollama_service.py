@@ -305,27 +305,61 @@ class OllamaService:
             url_match = re.search(r'(https?://[^\s<>"]+|www\.[^\s<>"]+)', last_user_msg)
             is_research_triggered = bool(re.search(r'\b(research|/research)\b', lower_msg))
 
-            # A. Explicit URL Pasted -> Directly Extract and Read Page
-            if url_match and enable_search:
-                target_url = url_match.group(1).strip()
-                yield {"delta": f"🌐 *Fetching and analyzing live content from:* `{target_url}`...\n\n", "done": False}
+            # Check if an earlier message in this conversation already referenced a URL
+            prior_url_match = None
+            if not url_match and len(messages) > 1:
+                for prior_m in messages[:-1]:
+                    p_match = re.search(r'(https?://[^\s<>"]+|www\.[^\s<>"]+)', prior_m.get("content", ""))
+                    if p_match:
+                        prior_url_match = p_match.group(1).strip()
+                        break
+
+            # A. Explicit URL Pasted (or follow-up questions referencing a URL from earlier in the chat)
+            if (url_match or prior_url_match) and enable_search:
+                target_url = url_match.group(1).strip() if url_match else prior_url_match
+                if url_match:
+                    yield {"delta": f"🌐 *Fetching and analyzing live content from:* `{target_url}`...\n\n", "done": False}
                 extract_res = await tool_registry.execute_tool("extract_url_content", {"url": target_url})
                 if extract_res.get("status") == "success" and extract_res.get("content"):
                     page_content = extract_res.get("content")
-                    messages.insert(1, {
-                        "role": "system",
-                        "content": (
+                    if url_match:
+                        directive = (
                             f"EXTRACTED CONTENT FROM URL ({target_url}):\n\n"
-                            f"{page_content}\n\n"
+                            f"{page_content[:6000]}\n\n"
                             f"CRITICAL DIRECTIVE:\n"
                             f"1. The user provided the URL ({target_url}). Provide an immediate, comprehensive, well-structured summary and deep analysis of the content.\n"
                             f"2. Structure your response with clear sections: Overview, Key Highlights / Takeaways, Detailed Breakdown, and Conclusion.\n"
-                            f"3. Do NOT just say you read it or ask what they want to know — deliver the substantive breakdown immediately.\n"
+                            f"3. Base every fact strictly on the extracted text above. Do NOT invent alternate game storylines.\n"
                             f"4. Cite the source URL ({target_url})."
                         )
+                    else:
+                        # For follow-up questions, use BGE cross-encoder to isolate top relevant passages from the page
+                        relevant_text = page_content[:5000]
+                        try:
+                            if vector_store.reranker and len(page_content) > 1000:
+                                # Split page into coherent paragraphs
+                                raw_paras = [p.strip() for p in page_content.split('\n') if len(p.strip()) > 40]
+                                if len(raw_paras) > 3:
+                                    scores = list(vector_store.reranker.rerank(last_user_msg, raw_paras[:40]))
+                                    ranked = sorted(zip(scores, raw_paras[:40]), key=lambda x: x[0], reverse=True)
+                                    top_paras = [text for _, text in ranked[:6]]
+                                    relevant_text = "\n\n".join(top_paras)
+                        except Exception as rerank_ex:
+                            print(f"Reranking error on page content: {rerank_ex}")
+
+                        directive = (
+                            f"EXTRACTED REFERENCE CONTENT FROM CONVERSATION URL ({target_url}):\n\n"
+                            f"{relevant_text}\n\n"
+                            f"CRITICAL DIRECTIVE:\n"
+                            f"1. Ground your answer EXCLUSIVELY and ACCURATELY on the real facts from the extracted page content above.\n"
+                            f"2. Answer the user's specific question ('{last_user_msg}') directly with precise factual accuracy. Do NOT hallucinate fabricated storylines."
+                        )
+                    messages.insert(1, {
+                        "role": "system",
+                        "content": directive
                     })
                     sources.append({"filename": f"URL: {target_url[:35]}", "score": 1.0, "url": target_url})
-                else:
+                elif url_match:
                     yield {"delta": f"⚠️ *Notice: Could not parse page directly ({extract_res.get('error', 'Unknown')}). Proceeding with web search...*\n\n", "done": False}
 
             # B. Keyword 'research' Triggered
