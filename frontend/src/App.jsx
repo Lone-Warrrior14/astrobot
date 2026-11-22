@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
 
@@ -43,6 +43,11 @@ export default function App() {
   const [imagePrompt, setImagePrompt] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedGallery, setGeneratedGallery] = useState([]);
+
+  // Copied State Tracker for Message & Code Blocks
+  const [copiedId, setCopiedId] = useState(null);
+  // Source Drawer Preview State
+  const [activeSourceDrawer, setActiveSourceDrawer] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -391,6 +396,15 @@ export default function App() {
       downloadAnchor.remove();
       URL.revokeObjectURL(url);
     }
+  };
+
+  const copyToClipboard = (text, id) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => {
+      setCopiedId(prev => (prev === id ? null : prev));
+    }, 2000);
   };
 
   // Dedicated sender for AstraOnly full-screen conversation
@@ -1002,22 +1016,80 @@ export default function App() {
                           <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
                         </div>
                       )}
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]} 
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{
+                          pre({ children, ...props }) {
+                            return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
+                          },
+                          code({ node, inline, className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const codeString = String(children).replace(/\n$/, '');
+                            if (!inline && (match || codeString.includes('\n'))) {
+                              const codeId = `code_${Math.random().toString(36).substring(2, 9)}`;
+                              return (
+                                <div className="code-block-container">
+                                  <div className="code-block-header">
+                                    <span className="code-lang-label">{match ? match[1] : 'code'}</span>
+                                    <button 
+                                      className="copy-code-btn"
+                                      onClick={() => copyToClipboard(codeString, codeId)}
+                                      title="Copy code"
+                                    >
+                                      {copiedId === codeId ? (
+                                        <><Check size={12} color="#10a37f" /> <span>Copied!</span></>
+                                      ) : (
+                                        <><Copy size={12} /> <span>Copy code</span></>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                </div>
+                              );
+                            }
+                            return <code className={className} {...props}>{children}</code>;
+                          }
+                        }}
+                      >
                         {m.content}
                       </ReactMarkdown>
 
+                      {/* Action Bar Beneath Assistant Bubble */}
+                      {m.role === 'assistant' && m.content && (
+                        <div className="message-action-bar">
+                          <button 
+                            className="msg-action-btn"
+                            onClick={() => copyToClipboard(m.content, `msg_${idx}`)}
+                            title="Copy entire response"
+                          >
+                            {copiedId === `msg_${idx}` ? (
+                              <><Check size={12} color="#10a37f" /> <span>Copied answer!</span></>
+                            ) : (
+                              <><Copy size={12} /> <span>Copy answer</span></>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Interactive Sources & Drawer Trigger */}
                       {m.sources && m.sources.length > 0 && (
                         <div className="sources-tags">
                           {m.sources.map((s, si) => (
-                            <span key={si} className="source-tag">
+                            <button 
+                              key={si} 
+                              className="source-tag clickable-source-tag"
+                              onClick={() => setActiveSourceDrawer(s)}
+                              title="Click to view reference passage"
+                            >
                               {s.url ? (
-                                <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
-                                  🌐 {s.filename}
-                                </a>
+                                <>🌐 {s.filename} <Info size={11} style={{ marginLeft: 3 }} /></>
                               ) : (
-                                <>📄 {s.filename} (relevance: {Math.round(s.score * 100)}%)</>
+                                <>📄 {s.filename} ({Math.round(s.score * 100)}%) <Info size={11} style={{ marginLeft: 3 }} /></>
                               )}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -1427,6 +1499,65 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Interactive Source Reference Drawer Modal */}
+      {activeSourceDrawer && (
+        <div className="source-drawer-overlay" onClick={() => setActiveSourceDrawer(null)}>
+          <div className="source-drawer-card" onClick={(e) => e.stopPropagation()}>
+            <div className="source-drawer-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} color="var(--accent)" />
+                <h3 style={{ margin: 0, fontSize: '15px' }}>Reference Source Details</h3>
+              </div>
+              <button 
+                className="close-drawer-btn" 
+                onClick={() => setActiveSourceDrawer(null)}
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="source-drawer-body">
+              <div style={{ marginBottom: '14px' }}>
+                <strong style={{ fontSize: '12px', color: 'var(--text-muted)' }}>SOURCE IDENTIFIER</strong>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {activeSourceDrawer.filename}
+                </div>
+              </div>
+
+              {activeSourceDrawer.score !== undefined && (
+                <div style={{ marginBottom: '14px' }}>
+                  <strong style={{ fontSize: '12px', color: 'var(--text-muted)' }}>RELEVANCE CONFIDENCE</strong>
+                  <div style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: 500, marginTop: '2px' }}>
+                    {Math.round(activeSourceDrawer.score * 100)}% Match
+                  </div>
+                </div>
+              )}
+
+              {activeSourceDrawer.url && (
+                <div style={{ marginBottom: '16px' }}>
+                  <strong style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ORIGIN URL</strong>
+                  <div style={{ marginTop: '4px' }}>
+                    <a 
+                      href={activeSourceDrawer.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      style={{ color: '#38bdf8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', wordBreak: 'break-all' }}
+                    >
+                      {activeSourceDrawer.url} <ExternalLink size={13} />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                💡 <em>This source passage was retrieved from this conversation's vector index or live URL parser and reranked using the local BAAI cross-encoder to ground the assistant's answer.</em>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Astra Interactive Easter Egg Companion */}
       <AstraCompanion 

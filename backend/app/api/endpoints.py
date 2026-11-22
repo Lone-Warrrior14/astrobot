@@ -239,6 +239,32 @@ async def chat_stream(data: dict, db: AsyncSession = Depends(get_db)):
                     sources=collected_sources
                 )
                 db.add(assistant_msg)
+
+                # Auto-generate meaningful conversation title if title is generic or default URL
+                if conv.title and (conv.title.startswith("http") or conv.title.startswith("/") or len(conv.title) <= 15 or "..." in conv.title):
+                    try:
+                        import re
+                        yt = re.search(r'(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})', content)
+                        if yt:
+                            match = re.search(r'\*\*([^*]{3,35})\*\*', clean_text or "")
+                            conv.title = f"Video: {match.group(1).strip()}" if match else f"YouTube: {yt.group(1)}"
+                        else:
+                            wiki = re.search(r'https?://[^/]+/wiki/([^/?#]+)', content)
+                            if wiki:
+                                page_name = wiki.group(1).replace("_", " ").replace("%22", "").replace("%20", " ").strip()
+                                conv.title = f"Wiki: {page_name[:35]}"
+                            else:
+                                url_m = re.search(r'https?://(?:www\.)?([^/]+)', content)
+                                if url_m:
+                                    conv.title = f"Web: {url_m.group(1)[:30]}"
+                                else:
+                                    clean_q = re.sub(r'^(?:/research|research|what is|tell me about|explain|who is)\s+', '', content, flags=re.IGNORECASE).strip()
+                                    words = clean_q.split()
+                                    if words:
+                                        conv.title = " ".join(words[:5]).capitalize()[:40]
+                    except Exception as title_err:
+                        print(f"Auto title error: {title_err}")
+
                 await db.commit()
 
                 # Automatic memory extraction
