@@ -299,12 +299,36 @@ class OllamaService:
             except Exception as e:
                 print(f"RAG retrieval notice: {e}")
 
-        # ── 4. SearXNG Web & Image Search Triggered on 'research' ──
+        # ── 4. Web Research & URL Content Extraction ──
         if last_user_msg:
             lower_msg = last_user_msg.lower()
+            url_match = re.search(r'(https?://[^\s<>"]+|www\.[^\s<>"]+)', last_user_msg)
             is_research_triggered = bool(re.search(r'\b(research|/research)\b', lower_msg))
 
-            if is_research_triggered and enable_search:
+            # A. Explicit URL Pasted -> Directly Extract and Read Page
+            if url_match and enable_search:
+                target_url = url_match.group(1).strip()
+                yield {"delta": f"🌐 *Fetching and reading page content from:* `{target_url}`...\n\n", "done": False}
+                extract_res = await tool_registry.execute_tool("extract_url_content", {"url": target_url})
+                if extract_res.get("status") == "success" and extract_res.get("content"):
+                    page_content = extract_res.get("content")
+                    # If page is long, use BGE reranker to isolate most relevant sections if user asked a specific question
+                    messages.insert(1, {
+                        "role": "system",
+                        "content": (
+                            f"EXTRACTED CONTENT FROM URL ({target_url}):\n\n"
+                            f"{page_content}\n\n"
+                            f"INSTRUCTION: The user provided the URL above. Thoroughly read and analyze the extracted content. "
+                            f"Answer their questions, summarize the page, or provide the key insights based directly on this text. "
+                            f"Cite the source URL ({target_url})."
+                        )
+                    })
+                    sources.append({"filename": f"URL: {target_url[:35]}", "score": 1.0, "url": target_url})
+                else:
+                    yield {"delta": f"⚠️ *Notice: Could not parse page directly ({extract_res.get('error', 'Unknown')}). Proceeding with web search...*\n\n", "done": False}
+
+            # B. Keyword 'research' Triggered
+            elif is_research_triggered and enable_search:
                 match = re.search(r'(?:/research|research)\s*[:\-\s]?\s*(.*)', last_user_msg, re.IGNORECASE)
                 query_to_search = match.group(1).strip() if match and match.group(1).strip() else last_user_msg
                 
@@ -321,14 +345,13 @@ class OllamaService:
                         messages.insert(1, {
                             "role": "system",
                             "content": (
-                                f"SearXNG LIVE IMAGE SEARCH RESULTS for '{query_to_search}':\n\n"
+                                f"LIVE IMAGE SEARCH RESULTS for '{query_to_search}':\n\n"
                                 f"{images_markdown}\n\n"
                                 f"INSTRUCTION: Present these images to the user using the markdown image links above, accompanied by descriptions."
                             )
                         })
                         sources.extend([{"filename": f"Image: {r['title']}", "score": 1.0, "url": r['img_src']} for r in img_res["results"]])
                 else:
-                    # Clean the query
                     clean_query = re.sub(r'^(what\s+are\s+the|what\s+is\s+the|tell\s+me\s+the|give\s+me\s+the|show\s+me\s+the|latest|current)\s+', '', query_to_search, flags=re.IGNORECASE).strip()
                     
                     if any(w in query_to_search.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
@@ -336,21 +359,22 @@ class OllamaService:
                     else:
                         search_query_expanded = clean_query or query_to_search
 
-                    search_res = await tool_registry.execute_tool("searxng_search", {"query": search_query_expanded})
+                    search_res = await tool_registry.execute_tool("web_search", {"query": search_query_expanded})
                     if search_res.get("status") == "success" and search_res.get("results"):
                         results_text = "\n\n".join([
                             f"Source Title: {r['title']}\nSummary/Snippet: {r['content']}\nURL: {r['url']}"
                             for r in search_res["results"][:6]
                         ])
+                        engine_name = search_res.get("engine", "Search Engine")
                         messages.insert(1, {
                             "role": "system",
                             "content": (
-                                f"SearXNG LIVE SEARCH RESULTS (Retrieved on {current_time_str}):\n\n"
+                                f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}):\n\n"
                                 f"{results_text}\n\n"
                                 f"CRITICAL DIRECTIVE:\n"
-                                f"1. The user explicitly asked for the news. You MUST provide a thorough, structured, bulleted summary of the top headlines and stories found in the search results above.\n"
-                                f"2. DO NOT reply with a passive offer or question like 'I can look up the news for you, let me know if you want me to search'. The search has ALREADY been performed.\n"
-                                f"3. Immediately deliver the news breakdown categorized by topic (e.g. World Affairs, Politics, Technology/Economy) with short summaries for each."
+                                f"1. The user explicitly asked for research/news. You MUST provide a thorough, structured, bulleted summary of the top findings and stories found in the search results above.\n"
+                                f"2. DO NOT reply with a passive offer or question like 'I can look up the news for you'. The search has ALREADY been performed.\n"
+                                f"3. Deliver a comprehensive breakdown categorized by topic with short summaries and citations for each."
                             )
                         })
                         sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in search_res["results"][:6]])

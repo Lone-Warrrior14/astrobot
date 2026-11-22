@@ -45,6 +45,11 @@ class ToolRegistry:
                 "name": "python_interpreter",
                 "description": "Executes sandboxed Python code for calculations and data transforms.",
                 "parameters": {"code": "string"}
+            },
+            "extract_url_content": {
+                "name": "extract_url_content",
+                "description": "Extracts the full readable markdown text content of a given web URL using OpenSERP browser rendering.",
+                "parameters": {"url": "string"}
             }
         }
 
@@ -202,6 +207,39 @@ class ToolRegistry:
                 return {"output": out, "status": "success"}
             except Exception as e:
                 return {"error": str(e), "status": "error"}
+
+        elif name == "extract_url_content":
+            url = args.get("url", "").strip()
+            if not url:
+                return {"error": "URL cannot be empty", "status": "error"}
+            if not url.startswith("http://") and not url.startswith("https://"):
+                url = f"https://{url}"
+
+            # 1. Primary: OpenSERP real headless browser extraction
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    open_res = await client.get("http://localhost:7000/extract", params={"url": url, "format": "markdown"})
+                    if open_res.status_code == 200 and len(open_res.text.strip()) > 50:
+                        return {"content": open_res.text.strip()[:10000], "url": url, "status": "success", "engine": "OpenSERP"}
+            except Exception:
+                pass
+
+            # 2. Secondary: Direct HTTP fetch fallback
+            try:
+                headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+                async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+                    res = await client.get(url, headers=headers)
+                    if res.status_code == 200:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(res.text, "html.parser")
+                        for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                            element.decompose()
+                        text = soup.get_text(separator="\n", strip=True)
+                        return {"content": text[:10000], "url": url, "status": "success", "engine": "DirectFetch"}
+            except Exception as e:
+                return {"error": f"Failed to extract page content: {str(e)}", "status": "error"}
+
+            return {"error": "Page could not be parsed", "status": "error"}
 
         return {"error": f"Tool '{name}' not found", "status": "error"}
 
