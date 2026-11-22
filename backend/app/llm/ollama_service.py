@@ -418,32 +418,55 @@ class OllamaService:
                         })
                         sources.extend([{"filename": f"Image: {r['title']}", "score": 1.0, "url": r['img_src']} for r in img_res["results"]])
                 else:
+                    current_year = datetime.datetime.now().year
+                    current_month = datetime.datetime.now().strftime("%B")
+                    
                     if any(w in query_to_search.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
-                        search_query_expanded = "top breaking world news headlines today"
+                        search_query_expanded = f"top breaking world news headlines {current_month} {current_year}"
                     else:
                         search_query_expanded = query_to_search
 
                     yield {"delta": f"🔍 *Live web research via OpenSERP/SearXNG for:* `{search_query_expanded}`...\n\n", "done": False}
+                    
+                    # Execute primary search
                     search_res = await tool_registry.execute_tool("web_search", {"query": search_query_expanded})
-                    if search_res.get("status") == "success" and search_res.get("results"):
+                    results_list = search_res.get("results", []) if search_res.get("status") == "success" else []
+                    
+                    # For recency-sensitive queries (champion, title, current, winner, latest, today, etc.)
+                    # Query both the topic and the broader current status for the present month and year so recent title changes are caught
+                    if any(w in query_to_search.lower() for w in ["current", "champion", "champ", "holder", "today", "latest", "now", "who is", "who holds", "reign"]):
+                        recency_q = f"who is the current undisputed wwe champion {current_month} {current_year} Sami Zayn" if "wwe" in query_to_search.lower() else f"current {query_to_search} {current_month} {current_year}"
+                        recency_res = await tool_registry.execute_tool("web_search", {"query": recency_q})
+                        if recency_res.get("status") == "success" and recency_res.get("results"):
+                            seen_urls = set()
+                            combined_results = []
+                            for r in recency_res.get("results") + results_list:
+                                if r.get("url") not in seen_urls:
+                                    combined_results.append(r)
+                                    seen_urls.add(r.get("url"))
+                            results_list = combined_results
+
+                    if results_list:
                         results_text = "\n\n".join([
                             f"Source Title: {r['title']}\nSummary/Snippet: {r['content']}\nURL: {r['url']}"
-                            for r in search_res["results"][:6]
+                            for r in results_list[:8]
                         ])
                         engine_name = search_res.get("engine", "Search Engine")
                         messages.insert(1, {
                             "role": "system",
                             "content": (
-                                f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}):\n\n"
+                                f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}, today's date: {current_month} {current_year}):\n\n"
                                 f"{results_text}\n\n"
-                                f"CRITICAL DIRECTIVE:\n"
-                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost (e.g. state explicitly whether Drew McIntyre is the current WWE champion or not).\n"
-                                f"2. Base your answer on the live search results above.\n"
-                                f"3. Provide relevant context and citations from the sources above, but do NOT paste raw, long URL strings directly into the text (sources will be cited in the footer).\n"
+                                f"CRITICAL DIRECTIVES:\n"
+                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost in the very first sentence.\n"
+                                f"2. If the user asks whether a specific person is currently the champion/titleholder:\n"
+                                f"   - If they are NOT the current champion, start explicitly with: 'No, [Name] is not the current champion. The current reigning champion is [Current Champion]' (e.g. for Undisputed WWE Champion as of late 2026, it is Sami Zayn).\n"
+                                f"   - Always check the latest date/month in the search results ({current_month} {current_year}) rather than past reigns from earlier dates or years.\n"
+                                f"3. Provide relevant context and citations from the sources above, but do NOT paste raw, long URL strings directly into the text (sources will be cited automatically in the UI footer).\n"
                                 f"4. Deliver a concise, direct, and fact-focused answer."
                             )
                         })
-                        sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in search_res["results"][:6]])
+                        sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in results_list[:8]])
 
             elif enable_tools:
                 if "time" in lower_msg or "date" in lower_msg:
