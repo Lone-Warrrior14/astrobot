@@ -215,29 +215,64 @@ class ToolRegistry:
             if not url.startswith("http://") and not url.startswith("https://"):
                 url = f"https://{url}"
 
-            # 1. Primary: OpenSERP real headless browser extraction
+            # 1. Primary: Browser Impersonation via curl_cffi (bypasses Cloudflare 403 / anti-bot on Fandom, Wikipedia, news sites)
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                from curl_cffi.requests import AsyncSession
+                from bs4 import BeautifulSoup
+                import trafilatura
+
+                async with AsyncSession() as session:
+                    res = await session.get(url, impersonate="chrome120", timeout=15.0)
+                    if res.status_code == 200 and len(res.text.strip()) > 100:
+                        soup = BeautifulSoup(res.text, "html.parser")
+                        # For Fandom / MediaWiki sites, extract primary article body directly
+                        article_elem = soup.find("div", class_="mw-parser-output") or soup.find("article") or soup.find("main")
+                        if article_elem:
+                            for el in article_elem(["script", "style", "nav", "noscript"]):
+                                el.decompose()
+                            extracted_text = article_elem.get_text(separator=" ", strip=True)
+                            if len(extracted_text) > 100:
+                                return {"content": extracted_text[:14000], "url": url, "status": "success", "engine": "BrowserImpersonation"}
+
+                        # Trafilatura high quality clean text extraction fallback
+                        clean_text = trafilatura.extract(res.text, include_comments=False, include_tables=True)
+                        if clean_text and len(clean_text) > 100:
+                            return {"content": clean_text[:14000], "url": url, "status": "success", "engine": "Trafilatura"}
+
+                        # BeautifulSoup fallback
+                        for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                            element.decompose()
+                        text = soup.get_text(separator="\n", strip=True)
+                        if len(text) > 100:
+                            return {"content": text[:14000], "url": url, "status": "success", "engine": "BeautifulSoup"}
+            except Exception as e:
+                print(f"curl_cffi extraction notice: {e}")
+
+            # 2. Secondary: Direct HTTP fetch fallback with standard headers
+            try:
+                from bs4 import BeautifulSoup
+                import trafilatura
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
+                async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+                    res = await client.get(url, headers=headers)
+                    if res.status_code == 200:
+                        soup = BeautifulSoup(res.text, "html.parser")
+                        for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                            element.decompose()
+                        text = soup.get_text(separator="\n", strip=True)
+                        if len(text) > 100:
+                            return {"content": text[:12000], "url": url, "status": "success", "engine": "DirectFetch"}
+            except Exception as e:
+                print(f"DirectFetch extraction notice: {e}")
+
+            # 3. Tertiary: OpenSERP real headless extraction
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
                     open_res = await client.get("http://localhost:7000/extract", params={"url": url, "format": "markdown"})
                     if open_res.status_code == 200 and len(open_res.text.strip()) > 50:
                         return {"content": open_res.text.strip()[:10000], "url": url, "status": "success", "engine": "OpenSERP"}
             except Exception:
                 pass
-
-            # 2. Secondary: Direct HTTP fetch fallback
-            try:
-                headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-                async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
-                    res = await client.get(url, headers=headers)
-                    if res.status_code == 200:
-                        from bs4 import BeautifulSoup
-                        soup = BeautifulSoup(res.text, "html.parser")
-                        for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
-                            element.decompose()
-                        text = soup.get_text(separator="\n", strip=True)
-                        return {"content": text[:10000], "url": url, "status": "success", "engine": "DirectFetch"}
-            except Exception as e:
-                return {"error": f"Failed to extract page content: {str(e)}", "status": "error"}
 
             return {"error": "Page could not be parsed", "status": "error"}
 

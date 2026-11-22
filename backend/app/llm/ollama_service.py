@@ -308,19 +308,20 @@ class OllamaService:
             # A. Explicit URL Pasted -> Directly Extract and Read Page
             if url_match and enable_search:
                 target_url = url_match.group(1).strip()
-                yield {"delta": f"🌐 *Fetching and reading page content from:* `{target_url}`...\n\n", "done": False}
+                yield {"delta": f"🌐 *Fetching and analyzing live content from:* `{target_url}`...\n\n", "done": False}
                 extract_res = await tool_registry.execute_tool("extract_url_content", {"url": target_url})
                 if extract_res.get("status") == "success" and extract_res.get("content"):
                     page_content = extract_res.get("content")
-                    # If page is long, use BGE reranker to isolate most relevant sections if user asked a specific question
                     messages.insert(1, {
                         "role": "system",
                         "content": (
                             f"EXTRACTED CONTENT FROM URL ({target_url}):\n\n"
                             f"{page_content}\n\n"
-                            f"INSTRUCTION: The user provided the URL above. Thoroughly read and analyze the extracted content. "
-                            f"Answer their questions, summarize the page, or provide the key insights based directly on this text. "
-                            f"Cite the source URL ({target_url})."
+                            f"CRITICAL DIRECTIVE:\n"
+                            f"1. The user provided the URL ({target_url}). Provide an immediate, comprehensive, well-structured summary and deep analysis of the content.\n"
+                            f"2. Structure your response with clear sections: Overview, Key Highlights / Takeaways, Detailed Breakdown, and Conclusion.\n"
+                            f"3. Do NOT just say you read it or ask what they want to know — deliver the substantive breakdown immediately.\n"
+                            f"4. Cite the source URL ({target_url})."
                         )
                     })
                     sources.append({"filename": f"URL: {target_url[:35]}", "score": 1.0, "url": target_url})
@@ -359,6 +360,7 @@ class OllamaService:
                     else:
                         search_query_expanded = clean_query or query_to_search
 
+                    yield {"delta": f"🔍 *Live web research via OpenSERP/SearXNG for:* `{search_query_expanded}`...\n\n", "done": False}
                     search_res = await tool_registry.execute_tool("web_search", {"query": search_query_expanded})
                     if search_res.get("status") == "success" and search_res.get("results"):
                         results_text = "\n\n".join([
@@ -372,9 +374,9 @@ class OllamaService:
                                 f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}):\n\n"
                                 f"{results_text}\n\n"
                                 f"CRITICAL DIRECTIVE:\n"
-                                f"1. The user explicitly asked for research/news. You MUST provide a thorough, structured, bulleted summary of the top findings and stories found in the search results above.\n"
+                                f"1. The user explicitly asked for research/news on '{search_query_expanded}'. You MUST provide an immediate, rich, structured, and informative summary of the top findings and stories found in the search results.\n"
                                 f"2. DO NOT reply with a passive offer or question like 'I can look up the news for you'. The search has ALREADY been performed.\n"
-                                f"3. Deliver a comprehensive breakdown categorized by topic with short summaries and citations for each."
+                                f"3. Deliver a comprehensive breakdown organized by topic with bullet points, context, and clear source citations for each story/topic."
                             )
                         })
                         sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in search_res["results"][:6]])

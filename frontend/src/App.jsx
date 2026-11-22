@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
 
@@ -28,6 +28,7 @@ export default function App() {
   const [isIncognito, setIsIncognito] = useState(false);
   const [isRagOnly, setIsRagOnly] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null); // null | { name, stage: 'Uploading' | 'Indexing' | 'Embedding' }
+  const [researchState, setResearchState] = useState(null); // null | { type: 'url' | 'search', query: string }
   const [isAstraActive, setIsAstraActive] = useState(false);
   const [isAstraThinking, setIsAstraThinking] = useState(false);
   const [isAstraOnly, setIsAstraOnly] = useState(false);
@@ -225,6 +226,19 @@ export default function App() {
       setIsGeneratingInChatImage(true);
     }
 
+    // Check if this prompt is a URL or explicit research request
+    const isUrl = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/i.test(userText);
+    const isResearch = /\b(research|\/research)\b/i.test(userText);
+    if (isUrl) {
+      const match = userText.match(/(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/i);
+      setResearchState({ type: 'url', query: match ? match[1] : 'URL' });
+    } else if (isResearch) {
+      const cleanQ = userText.replace(/^\/?research\s*[:\-\s]?\s*/i, '').trim();
+      setResearchState({ type: 'search', query: cleanQ || 'Web' });
+    } else {
+      setResearchState(null);
+    }
+
     const userMsg = { id: Date.now().toString(), role: 'user', content: userText };
     setMessages(prev => [...prev, userMsg]);
     setIsStreaming(true);
@@ -269,6 +283,11 @@ export default function App() {
               const data = JSON.parse(line.slice(6));
               if (data.delta) {
                 assistantText += data.delta;
+                // If model started streaming real content (beyond initial fetching notices), dismiss research loader
+                if (assistantText.length > 40) {
+                  setResearchState(null);
+                }
+
                 // Detect thinking tag vs regular streaming
                 if (assistantText.includes('<think>') && !assistantText.includes('</think>')) {
                   setIsAstraThinking(true);
@@ -284,6 +303,7 @@ export default function App() {
               }
               if (data.sources) {
                 sources = data.sources;
+                setResearchState(null);
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, sources } : m));
               }
             } catch (err) {}
@@ -299,6 +319,7 @@ export default function App() {
     } finally {
       setIsStreaming(false);
       setIsGeneratingInChatImage(false);
+      setResearchState(null);
       setIsAstraThinking(false);
     }
   };
@@ -691,15 +712,19 @@ export default function App() {
         {/* Top Header */}
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <select 
-              className="model-select"
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-            >
-              {models.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+            <div className="model-select-container">
+              <Cpu size={15} color="var(--accent)" />
+              <select 
+                className="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                title="Select Local Ollama Model"
+              >
+                {models.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
             <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 500 }}>
               ● Local Ollama Active
             </span>
@@ -932,6 +957,38 @@ export default function App() {
                       </div>
                       <div className="progress-bar-track">
                         <div className="progress-bar-fill" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {researchState && (
+                <div className="message-row">
+                  <div className="avatar ai">
+                    <img 
+                      src="/logo.png" 
+                      alt="Astra Talk" 
+                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                    />
+                  </div>
+                  <div className="message-bubble">
+                    <div className="research-loading-box">
+                      {researchState.type === 'url' ? (
+                        <Globe size={24} className="research-spinner" />
+                      ) : (
+                        <Search size={24} className="research-spinner" />
+                      )}
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                          {researchState.type === 'url' ? '🌐 Fetching & Reading Web Page...' : '🔍 Researching Live Web & News...'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {researchState.type === 'url' ? (
+                            <>Analyzing content from <code style={{ color: 'var(--accent)' }}>{researchState.query.slice(0, 50)}</code></>
+                          ) : (
+                            <>Searching multi-engine OpenSERP / SearXNG for: <strong style={{ color: 'var(--accent)' }}>"{researchState.query}"</strong></>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
