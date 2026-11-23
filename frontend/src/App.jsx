@@ -4,7 +4,8 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX,
+  Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight
 } from 'lucide-react';
 import AstraCompanion, { speakAstra, cleanForSpeech } from './AstraCompanion';
 
@@ -47,6 +48,45 @@ export default function App() {
   // Auto Speech Back (TTS) State using Astra's Voice
   const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
   const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
+
+  // History search filter query
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+
+  // Helper to group conversations by relative timeframe
+  const getGroupedConversations = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    const filtered = conversations.filter(c => 
+      !historySearchQuery.trim() || 
+      (c.title && c.title.toLowerCase().includes(historySearchQuery.toLowerCase()))
+    );
+
+    const groups = {
+      Today: [],
+      'Previous 7 Days': [],
+      'Previous 30 Days': [],
+      Earlier: []
+    };
+
+    filtered.forEach(c => {
+      const updatedTime = c.updated_at ? new Date(c.updated_at).getTime() : now.getTime();
+      const diff = today - updatedTime;
+
+      if (diff <= 0) {
+        groups.Today.push(c);
+      } else if (diff <= 7 * oneDay) {
+        groups['Previous 7 Days'].push(c);
+      } else if (diff <= 30 * oneDay) {
+        groups['Previous 30 Days'].push(c);
+      } else {
+        groups.Earlier.push(c);
+      }
+    });
+
+    return groups;
+  };
 
   // SD Image Generation State
   const [imagePrompt, setImagePrompt] = useState('');
@@ -810,144 +850,149 @@ export default function App() {
     }
   };
 
+  const groups = getGroupedConversations();
+
   return (
     <div className="app-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        {/* App Branding */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 4px 12px', borderBottom: '1px solid var(--border)' }}>
-          <img 
-            src="/logo.png" 
-            alt="Astra Talk Logo" 
-            style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid var(--accent)', boxShadow: '0 0 10px rgba(16, 163, 127, 0.3)' }} 
-          />
-          <div>
-            <h1 style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '0.3px', background: 'linear-gradient(90deg, #10a37f 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-              Astra Talk
-            </h1>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Local AI Intelligence</span>
+      {/* Left Rail Icon Bar */}
+      <aside className="rail-sidebar">
+        <div className="rail-top">
+          <div 
+            className="rail-brand-logo" 
+            onClick={startNewChat} 
+            title="Astra Talk - Start New Chat"
+          >
+            <img src="/logo.png" alt="Astra Logo" />
+          </div>
+
+          <div className="rail-nav-items">
+            <button 
+              className={`rail-btn ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chat')}
+              title="AI Chat"
+            >
+              <MessageSquare size={18} />
+            </button>
+
+            <button 
+              className={`rail-btn ${activeTab === 'image_gen' ? 'active' : ''}`}
+              onClick={() => setActiveTab('image_gen')}
+              title="SDXL Image Studio"
+            >
+              <Sparkles size={18} />
+            </button>
+
+            <button 
+              className={`rail-btn ${activeTab === 'documents' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
+              title="Isolated Documents"
+            >
+              <Database size={18} />
+            </button>
+
+            <button 
+              className={`rail-btn ${activeTab === 'memories' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('memories'); fetchMemories(); }}
+              title="Long-Term Memory"
+            >
+              <Brain size={18} />
+            </button>
+
+            <button 
+              className={`rail-btn ${activeTab === 'hardware' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
+              title="System Diagnostics & SearXNG"
+            >
+              <HardDrive size={18} />
+            </button>
+
+            <button 
+              className={`rail-btn ${isAstraActive ? 'active' : ''}`}
+              onClick={() => {
+                setIsAstraActive(prev => !prev);
+                if (!isAstraActive) setIsAstraOnly(true);
+              }}
+              title="Astra Companion Easter Egg"
+              style={{ color: '#22c55e' }}
+            >
+              <Flame size={18} />
+            </button>
           </div>
         </div>
 
-        <button className="new-chat-btn" onClick={startNewChat}>
-          <Plus size={16} /> New Chat
-        </button>
-
-        <nav className="nav-links">
-          <div 
-            className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
-            onClick={() => setActiveTab('chat')}
+        <div className="rail-bottom">
+          <button 
+            className="rail-btn" 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
           >
-            <MessageSquare size={16} /> Chat
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'image_gen' ? 'active' : ''}`}
-            onClick={() => setActiveTab('image_gen')}
-          >
-            <Sparkles size={16} /> SDXL Image Generator
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'documents' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
-          >
-            <Database size={16} /> Conversation Files ({documents.length})
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'memories' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('memories'); fetchMemories(); }}
-          >
-            <Brain size={16} /> Persistent Memory
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'hardware' ? 'active' : ''}`}
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+          <button 
+            className="rail-btn" 
+            title="Settings & Hardware"
             onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
           >
-            <HardDrive size={16} /> System & SearXNG
-          </div>
-        </nav>
-
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '10px' }}>
-          Conversations
-        </div>
-
-        <div className="conv-list">
-          {conversations.map(c => (
-            <div 
-              key={c.id} 
-              className={`conv-item ${c.id === activeConvId ? 'active' : ''}`}
-              onClick={() => { setActiveConvId(c.id); setActiveTab('chat'); }}
-            >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                {c.title}
-              </span>
-              <button 
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                onClick={(e) => deleteConversation(e, c.id)}
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>RTX 3050 (4GB VRAM)</span>
-          <button 
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <Settings size={17} />
           </button>
         </div>
       </aside>
 
-      {/* Main Area */}
-      <main className="main-area">
-        {/* Top Header */}
-        <header className="top-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div className="model-select-container">
-              <Cpu size={15} color="var(--accent)" />
-              <select 
-                className="model-select"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                title="Select Local Ollama Model"
-              >
-                {models.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 500 }}>
-              ● Local Ollama Active
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Central Workspace Wrapper */}
+      <div className="workspace-wrapper">
+        {/* Top Floating Pill Navigation Dock */}
+        <header className="top-nav-dock">
+          {/* Left Nav Pill Group */}
+          <div className="nav-pills-bar">
             <button 
-              onClick={() => setIsRagOnly(prev => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: isRagOnly ? '1px solid #10a37f' : '1px solid var(--border)',
-                background: isRagOnly ? 'rgba(16, 163, 127, 0.2)' : 'var(--bg-tertiary)',
-                color: isRagOnly ? '#34d399' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.2s'
-              }}
-              title={isRagOnly ? "RAG-Only Mode Active: Answers strictly grounded in uploaded documents only" : "Enable RAG-Only Mode (Zero Hallucination)"}
+              className={`nav-pill-btn ${activeTab === 'hardware' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
             >
-              <FileText size={14} />
-              <span>{isRagOnly ? "RAG Only ON" : "RAG Only"}</span>
+              <LayoutDashboard size={14} /> Dashboard
             </button>
 
-            <button
+            <button 
+              className={`nav-pill-btn ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chat')}
+            >
+              <MessageSquare size={14} /> AI Chat
+            </button>
+
+            <button 
+              className={`nav-pill-btn ${activeTab === 'documents' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
+            >
+              <Database size={14} /> Files ({documents.length})
+            </button>
+
+            <button 
+              className={`nav-pill-btn ${activeTab === 'memories' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('memories'); fetchMemories(); }}
+            >
+              <Brain size={14} /> Memories ({memories.length})
+            </button>
+          </div>
+
+          {/* Right Controls Dock */}
+          <div className="top-controls-dock">
+            <button 
+              className="top-control-btn"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={`Switch Theme (${theme})`}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
+            <button 
+              className="top-control-btn"
+              onClick={() => handleExportChat('markdown')}
+              title="Export Chat to Markdown"
+            >
+              <Download size={15} />
+            </button>
+
+            <button 
+              className="top-control-btn"
               onClick={() => {
                 const next = !isSpeechBackEnabled;
                 setIsSpeechBackEnabled(next);
@@ -956,574 +1001,628 @@ export default function App() {
                   setCurrentlySpeakingMsgId(null);
                 }
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: isSpeechBackEnabled ? '1px solid #38bdf8' : '1px solid var(--border)',
-                background: isSpeechBackEnabled ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-tertiary)',
-                color: isSpeechBackEnabled ? '#38bdf8' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.2s'
-              }}
-              title={isSpeechBackEnabled ? "Speech Back ON: Assistant will speak responses out loud using Astra's voice" : "Enable Speech Back (Speaks responses out loud with Astra's voice)"}
+              style={{ color: isSpeechBackEnabled ? '#22c55e' : undefined }}
+              title={isSpeechBackEnabled ? "Speech Back ON: Assistant will speak responses" : "Enable Speech Back (Astra Voice)"}
             >
-              {isSpeechBackEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-              <span>{isSpeechBackEnabled ? "Speech Back ON" : "Speech Back"}</span>
-            </button>
-
-            <button 
-              onClick={toggleIncognito}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: isIncognito ? '1px solid #a855f7' : '1px solid var(--border)',
-                background: isIncognito ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-tertiary)',
-                color: isIncognito ? '#c084fc' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-              title={isIncognito ? "Incognito active: Zero history saved to DB" : "Enable Incognito Mode"}
-            >
-              <EyeOff size={14} />
-              <span>{isIncognito ? "Incognito ON" : "Incognito"}</span>
+              {isSpeechBackEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
 
             <div 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '5px 10px',
-                borderRadius: '6px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-secondary)'
+              className="avatar-badge-btn" 
+              onClick={() => {
+                setIsAstraActive(true);
+                setIsAstraOnly(true);
               }}
-              title="Memory Commands: 'remember <fact>', 'list remember', or 'forget <fact>'"
+              title="Astra Companion Fullscreen"
             >
-              <Brain size={13} color="#3b82f6" />
-              <span><code>remember</code> / <code>list remember</code> / <code>forget</code></span>
+              <img src="/logo.png" alt="Astra" />
             </div>
-
-            <div 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '5px 10px',
-                borderRadius: '6px',
-                background: 'rgba(16, 163, 127, 0.1)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-secondary)'
-              }}
-              title="Type 'research <query>' or 'research images of <query>' to execute SearXNG search"
-            >
-              <Search size={13} color="var(--accent)" />
-              <span>Keyword <code>research</code> triggers SearXNG</span>
-            </div>
-
-            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }} title="Analyze image using local Gemma 3 or Qwen2.5-VL">
-              <ImageIcon size={14} /> Analyze Image
-              <input type="file" onChange={handleImageAnalysis} style={{ display: 'none' }} accept="image/*" />
-            </label>
-
-            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }} title="Attach document isolated to this conversation">
-              <Paperclip size={14} /> Attach File
-              <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".pdf,.docx,.txt,.csv,.xlsx,.md" />
-            </label>
-
-            <button
-              onClick={() => handleExportChat('markdown')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                background: 'var(--bg-tertiary)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                color: 'var(--text-primary)',
-                cursor: 'pointer'
-              }}
-              title="Export Conversation to Markdown"
-            >
-              <Download size={14} /> Export
-            </button>
           </div>
         </header>
 
-        {/* View Switching */}
+        {/* Chat Workspace Stage */}
         {activeTab === 'chat' && (
-          <>
-            <div className="chat-messages">
-              {isRagOnly && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: 'rgba(16, 163, 127, 0.12)',
-                  border: '1px solid rgba(16, 163, 127, 0.35)',
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  margin: '0 auto 16px',
-                  maxWidth: '720px',
-                  color: '#a7f3d0',
-                  fontSize: '13px'
-                }}>
-                  <FileText size={18} color="#34d399" />
-                  <div>
-                    <strong>Strict RAG-Only Mode Active:</strong> Answers will be 100% grounded in your uploaded documents for this conversation. If the answer cannot be found in the files, the model will not speculate or hallucinate.
+          <div className="chat-workspace-stage">
+            {/* Chat Window Card */}
+            <div className="chat-window-card">
+              {/* Chat Top Banner with Model Select & Modes */}
+              <div className="chat-window-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="model-badge-pill" title="Local Model Engine">
+                    <div className="active-pulse-dot" />
+                    <select 
+                      className="model-select-dropdown"
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                      {models.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
                   </div>
+
+                  <button 
+                    onClick={() => setIsRagOnly(prev => !prev)}
+                    className={`pill-tool-btn ${isRagOnly ? 'active' : ''}`}
+                    title={isRagOnly ? "Strict RAG Grounding Enabled" : "Enable RAG Only Mode"}
+                  >
+                    <FileText size={13} />
+                    <span>{isRagOnly ? "RAG Grounded" : "RAG Off"}</span>
+                  </button>
+
+                  <button 
+                    onClick={toggleIncognito}
+                    className={`pill-tool-btn ${isIncognito ? 'active' : ''}`}
+                    style={isIncognito ? { color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.4)', background: 'rgba(168, 85, 247, 0.15)' } : {}}
+                    title={isIncognito ? "Incognito Active: Zero DB/Vector Writes" : "Enable Incognito Mode"}
+                  >
+                    <EyeOff size={13} />
+                    <span>{isIncognito ? "Incognito ON" : "Incognito"}</span>
+                  </button>
                 </div>
-              )}
-              {isIncognito && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: 'rgba(168, 85, 247, 0.1)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  margin: '0 auto 16px',
-                  maxWidth: '720px',
-                  color: '#e9d5ff',
-                  fontSize: '13px'
-                }}>
-                  <EyeOff size={18} color="#c084fc" />
-                  <div>
-                    <strong>Incognito Mode Active:</strong> Messages and generated images in this session are held in memory only and will never be saved to PostgreSQL, Qdrant memories, or conversation history.
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button 
+                    className="icon-tool-btn" 
+                    onClick={() => setShowThinking(prev => !prev)}
+                    title={showThinking ? "Hide Deep Thinking Process" : "Show Deep Thinking Process"}
+                  >
+                    <Lightbulb size={15} color={showThinking ? "#22c55e" : undefined} />
+                  </button>
+                  <button 
+                    className="icon-tool-btn" 
+                    onClick={startNewChat}
+                    title="Clear & New Chat"
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Messages or Empty Hero Vortex */}
+              <div className="chat-messages">
+                {messages.length === 0 ? (
+                  <div className="empty-hero-stage">
+                    <div className="hero-vortex-glow">
+                      <div className="hero-vortex-ring-1" />
+                      <div className="hero-vortex-ring-2" />
+                      <div className="hero-vortex-core" />
+                    </div>
+
+                    <h2 className="hero-greeting-title">
+                      {isIncognito ? "Private Incognito Studio" : "Good Day! How can Astra assist you?"}
+                    </h2>
+                    <p className="hero-greeting-sub">
+                      {isIncognito 
+                        ? "Zero database saves or vector trace. Everything stays strictly in temporary memory."
+                        : "Type your query, upload files for isolated RAG, or let Astra perform live web research."}
+                    </p>
+
+                    <div className="hero-starters-grid">
+                      <div 
+                        className="starter-card-btn"
+                        onClick={() => setInput("research current WWE champion")}
+                      >
+                        <div className="starter-card-title">
+                          <Search size={14} color="#22c55e" />
+                          <span>Live Web Research</span>
+                        </div>
+                        <div className="starter-card-desc">SearXNG multi-source search with real-time citations</div>
+                      </div>
+
+                      <div 
+                        className="starter-card-btn"
+                        onClick={() => setInput("create a image of futuristic neon cyberpunk city in rain")}
+                      >
+                        <div className="starter-card-title">
+                          <Sparkles size={14} color="#22c55e" />
+                          <span>Render Realistic Image</span>
+                        </div>
+                        <div className="starter-card-desc">SDXL / Realistic Vision v6 locally on RTX 3050</div>
+                      </div>
+
+                      <div 
+                        className="starter-card-btn"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <div className="starter-card-title">
+                          <Paperclip size={14} color="#22c55e" />
+                          <span>Ground on Documents</span>
+                        </div>
+                        <div className="starter-card-desc">Upload PDF, DOCX or TXT with zero cross-chat leakage</div>
+                      </div>
+
+                      <div 
+                        className="starter-card-btn"
+                        onClick={() => {
+                          setIsAstraActive(true);
+                          setIsAstraOnly(true);
+                        }}
+                      >
+                        <div className="starter-card-title">
+                          <Flame size={14} color="#22c55e" />
+                          <span>Launch Astra Companion</span>
+                        </div>
+                        <div className="starter-card-desc">Interactive living avatar with tactile pets and cute voice</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
-              {messages.length === 0 ? (
-                <div style={{ textAlign: 'center', marginTop: '15vh', color: 'var(--text-muted)' }}>
-                  {isIncognito ? (
-                    <>
-                      <EyeOff size={48} style={{ color: '#c084fc', marginBottom: '16px' }} />
-                      <h2 style={{ color: '#e9d5ff' }}>Private Incognito Session</h2>
-                      <p style={{ marginTop: '8px', maxWidth: '480px', margin: '8px auto 0' }}>
-                        Chat completely off-the-record. Nothing is saved to database or vector memory.
-                      </p>
-                    </>
-                  ) : (
-                    <>
+                ) : (
+                  messages.map((m, idx) => (
+                    <div key={idx} className="message-row">
+                      <div className={`avatar ${m.role === 'user' ? 'user' : 'ai'}`}>
+                        {m.role === 'user' ? (
+                          'U'
+                        ) : (
+                          <img 
+                            src="/logo.png" 
+                            alt="Astra Talk" 
+                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                          />
+                        )}
+                      </div>
+                      <div className="message-bubble">
+                        {m.thinking_content && showThinking && (
+                          <div className="thinking-box">
+                            <strong>🧠 Thinking Process:</strong>
+                            <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
+                          </div>
+                        )}
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]} 
+                          rehypePlugins={[rehypeHighlight]}
+                          components={{
+                            a({ href, children, ...props }) {
+                              const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
+                              return (
+                                <a 
+                                  href={href} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="chat-inline-link"
+                                  {...props}
+                                >
+                                  {isBareLongUrl ? '🌐 [Source Link]' : children}
+                                </a>
+                              );
+                            },
+                            pre({ children, ...props }) {
+                              return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
+                            },
+                            code({ node, inline, className, children, ...props }) {
+                              const match = /language-(\w+)/.exec(className || '');
+                              const codeString = String(children).replace(/\n$/, '');
+                              if (!inline && (match || codeString.includes('\n'))) {
+                                const codeId = `code_${Math.random().toString(36).substring(2, 9)}`;
+                                return (
+                                  <div className="code-block-container">
+                                    <div className="code-block-header">
+                                      <span className="code-lang-label">{match ? match[1] : 'code'}</span>
+                                      <button 
+                                        className="copy-code-btn"
+                                        onClick={() => copyToClipboard(codeString, codeId)}
+                                        title="Copy code"
+                                      >
+                                        {copiedId === codeId ? (
+                                          <><Check size={12} color="#10a37f" /> <span>Copied!</span></>
+                                        ) : (
+                                          <><Copy size={12} /> <span>Copy code</span></>
+                                        )}
+                                      </button>
+                                    </div>
+                                    <code className={className} {...props}>
+                                      {children}
+                                    </code>
+                                  </div>
+                                );
+                              }
+                              return <code className={className} {...props}>{children}</code>;
+                            }
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+
+                        {/* Action Bar Beneath Assistant Bubble */}
+                        {m.role === 'assistant' && m.content && (
+                          <div className="message-action-bar">
+                            <button 
+                              className="msg-action-btn"
+                              onClick={() => copyToClipboard(m.content, `msg_${idx}`)}
+                              title="Copy entire response"
+                            >
+                              {copiedId === `msg_${idx}` ? (
+                                <><Check size={12} color="#10a37f" /> <span>Copied answer!</span></>
+                              ) : (
+                                <><Copy size={12} /> <span>Copy answer</span></>
+                              )}
+                            </button>
+
+                            <button 
+                              className="msg-action-btn"
+                              onClick={() => handleSpeakText(m.content, m.id || `msg_${idx}`)}
+                              title={currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? "Stop speaking" : "Read aloud with Astra's voice"}
+                            >
+                              {currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? (
+                                <><VolumeX size={12} color="#ef4444" /> <span style={{ color: '#ef4444' }}>Stop</span></>
+                              ) : (
+                                <><Volume2 size={12} /> <span>Read aloud</span></>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Interactive Sources & Drawer Trigger */}
+                        {m.sources && m.sources.length > 0 && (
+                          <div className="sources-tags">
+                            {m.sources.map((s, si) => (
+                              <button 
+                                key={si} 
+                                className="source-tag clickable-source-tag"
+                                onClick={() => setActiveSourceDrawer(s)}
+                                title="Click to view reference passage"
+                              >
+                                {s.url ? (
+                                  <>🌐 {s.filename} <Info size={11} style={{ marginLeft: 3 }} /></>
+                                ) : (
+                                  <>📄 {s.filename} ({Math.round(s.score * 100)}%) <Info size={11} style={{ marginLeft: 3 }} /></>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {uploadProgress && (
+                  <div className="message-row">
+                    <div className="avatar ai">
                       <img 
                         src="/logo.png" 
                         alt="Astra Talk" 
-                        style={{ width: '84px', height: '84px', borderRadius: '22px', marginBottom: '16px', border: '2px solid var(--accent)', boxShadow: '0 0 24px rgba(16, 163, 127, 0.35)' }} 
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
                       />
-                      <h2 style={{ fontSize: '24px', fontWeight: 700, background: 'linear-gradient(90deg, #10a37f 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Astra Talk
-                      </h2>
-                      <p style={{ marginTop: '8px', maxWidth: '480px', margin: '8px auto 0', color: 'var(--text-secondary)' }}>
-                        Your private, local AI companion. Type normally for local LLM answers, <code>research &lt;topic&gt;</code> for live web search, or <code>create a image...</code> for instant visuals.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                messages.map((m, idx) => (
-                  <div key={idx} className="message-row">
-                    <div className={`avatar ${m.role === 'user' ? 'user' : 'ai'}`}>
-                      {m.role === 'user' ? (
-                        'U'
-                      ) : (
-                        <img 
-                          src="/logo.png" 
-                          alt="Astra Talk" 
-                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                        />
-                      )}
+                    </div>
+                    <div className="message-bubble" style={{ width: '100%' }}>
+                      <div className="upload-progress-container">
+                        <div className="upload-progress-header">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Loader2 size={16} className="upload-spinner" color="var(--accent)" />
+                            <span>{uploadProgress.stage}...</span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{uploadProgress.name}</span>
+                        </div>
+                        <div className="progress-bar-track">
+                          <div className="progress-bar-fill" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {researchState && (
+                  <div className="message-row">
+                    <div className="avatar ai">
+                      <img 
+                        src="/logo.png" 
+                        alt="Astra Talk" 
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      />
                     </div>
                     <div className="message-bubble">
-                      {m.thinking_content && showThinking && (
-                        <div className="thinking-box">
-                          <strong>🧠 Thinking Process:</strong>
-                          <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
+                      <div className="research-loading-box">
+                        {researchState.type === 'youtube' ? (
+                          <Video size={24} className="research-spinner" color="#ef4444" />
+                        ) : researchState.type === 'url' ? (
+                          <Globe size={24} className="research-spinner" />
+                        ) : (
+                          <Search size={24} className="research-spinner" />
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                            {researchState.type === 'youtube'
+                              ? '📺 Extracting YouTube Transcript & Video...'
+                              : researchState.type === 'url'
+                              ? '🌐 Fetching & Reading Web Page...'
+                              : '🔍 Researching Live Web & News...'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {researchState.type === 'youtube' ? (
+                              <>Transcribing spoken audio & captions from <code style={{ color: '#ef4444' }}>{researchState.query.slice(0, 50)}</code></>
+                            ) : researchState.type === 'url' ? (
+                              <>Extracting clean text & markdown from <code style={{ color: 'var(--accent)' }}>{researchState.query.slice(0, 50)}</code></>
+                            ) : (
+                              <>Aggregating live sources via OpenSERP & SearXNG for <em>"{researchState.query}"</em></>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]} 
-                        rehypePlugins={[rehypeHighlight]}
-                        components={{
-                          a({ href, children, ...props }) {
-                            const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
-                            return (
-                              <a 
-                                href={href} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="chat-inline-link"
-                                {...props}
-                              >
-                                {isBareLongUrl ? '🌐 [Source Link]' : children}
-                              </a>
-                            );
-                          },
-                          pre({ children, ...props }) {
-                            return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
-                          },
-                          code({ node, inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            const codeString = String(children).replace(/\n$/, '');
-                            if (!inline && (match || codeString.includes('\n'))) {
-                              const codeId = `code_${Math.random().toString(36).substring(2, 9)}`;
-                              return (
-                                <div className="code-block-container">
-                                  <div className="code-block-header">
-                                    <span className="code-lang-label">{match ? match[1] : 'code'}</span>
-                                    <button 
-                                      className="copy-code-btn"
-                                      onClick={() => copyToClipboard(codeString, codeId)}
-                                      title="Copy code"
-                                    >
-                                      {copiedId === codeId ? (
-                                        <><Check size={12} color="#10a37f" /> <span>Copied!</span></>
-                                      ) : (
-                                        <><Copy size={12} /> <span>Copy code</span></>
-                                      )}
-                                    </button>
-                                  </div>
-                                  <code className={className} {...props}>
-                                    {children}
-                                  </code>
-                                </div>
-                              );
-                            }
-                            return <code className={className} {...props}>{children}</code>;
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isGeneratingInChatImage && (
+                  <div className="message-row">
+                    <div className="avatar ai">
+                      <img 
+                        src="/logo.png" 
+                        alt="Astra Talk" 
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      />
+                    </div>
+                    <div className="message-bubble">
+                      <div className="image-gen-placeholder">
+                        <div className="shimmer-box">
+                          <Sparkles size={28} className="pulse-spinner" />
+                          <span style={{ fontWeight: 500, fontSize: '14px' }}>Rendering Photorealistic Image...</span>
+                          <span style={{ fontSize: '11px', opacity: 0.8 }}>Realistic Vision v6 (FP16) • Euler Ancestral (20 steps)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isVisionAnalyzing && (
+                  <div className="message-row">
+                    <div className="avatar ai">
+                      <img 
+                        src="/logo.png" 
+                        alt="Astra Talk" 
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      />
+                    </div>
+                    <div className="message-bubble" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Loader2 size={16} className="pulse-spinner" />
+                      <span>Analyzing image locally with {selectedModel}...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Bottom Input Glass Card */}
+              <div className="input-dock-container">
+                {/* Staged RAG / Vision Chips */}
+                {selectedFile && (
+                  <div className="pending-file-chip">
+                    <Paperclip size={13} color="#22c55e" />
+                    <span>RAG: <strong>{selectedFile.name}</strong></span>
+                    <button 
+                      onClick={() => setSelectedFile(null)} 
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {selectedImage && (
+                  <div className="pending-file-chip" style={{ gap: '8px' }}>
+                    {imagePreviewUrl && (
+                      <img src={imagePreviewUrl} alt="Preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
+                    )}
+                    <span>Vision: <strong>{selectedImage.name}</strong></span>
+                    <button 
+                      onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); }} 
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Input Card Container */}
+                <div className="input-glass-card">
+                  {/* Hidden File Inputs */}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    style={{ display: 'none' }} 
+                    accept=".pdf,.docx,.txt,.csv,.xlsx,.md" 
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        setSelectedFile(e.target.files[0]);
+                        setSelectedImage(null);
+                        setImagePreviewUrl(null);
+                      }
+                    }} 
+                  />
+                  <input 
+                    type="file" 
+                    ref={imageInputRef} 
+                    style={{ display: 'none' }} 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const f = e.target.files[0];
+                      if (f) {
+                        setSelectedImage(f);
+                        setSelectedFile(null);
+                        setImagePreviewUrl(URL.createObjectURL(f));
+                      }
+                    }} 
+                  />
+
+                  <textarea 
+                    rows={1}
+                    placeholder={
+                      isIncognito
+                        ? `Incognito mode active… No trace saved to disk.`
+                        : isRagOnly
+                          ? `Strict RAG Mode… Ask questions grounded in uploaded documents.`
+                          : selectedFile 
+                            ? `Ask questions about ${selectedFile.name}...` 
+                            : selectedImage 
+                              ? `Ask anything about this image (or press Send)...` 
+                              : `Start your request, or ask Astra anything...`
+                    }
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                  />
+
+                  {/* Bottom Action Row with Pills and Emerald Send Button */}
+                  <div className="input-bottom-actions-row">
+                    <div className="input-left-buttons">
+                      <button 
+                        className="icon-tool-btn" 
+                        title="Attach Document for Isolated RAG"
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                      >
+                        <Paperclip size={15} />
+                      </button>
+
+                      <button 
+                        className="icon-tool-btn" 
+                        title="Attach Image for Vision Analysis"
+                        onClick={() => imageInputRef.current?.click()}
+                        type="button"
+                      >
+                        <ImageIcon size={15} />
+                      </button>
+
+                      <button 
+                        className={`pill-tool-btn ${showThinking ? 'active' : ''}`}
+                        onClick={() => setShowThinking(prev => !prev)}
+                        type="button"
+                        title="Toggle Reasoning Trace"
+                      >
+                        <Lightbulb size={13} />
+                        <span>Reasoning</span>
+                      </button>
+
+                      <button 
+                        className="pill-tool-btn"
+                        onClick={() => {
+                          if (!input.startsWith('research ')) {
+                            setInput('research ' + input);
                           }
                         }}
+                        type="button"
+                        title="Prefix prompt with 'research' for Deep Live Meta-Search"
                       >
-                        {m.content}
-                      </ReactMarkdown>
-
-                      {/* Action Bar Beneath Assistant Bubble */}
-                      {m.role === 'assistant' && m.content && (
-                        <div className="message-action-bar">
-                          <button 
-                            className="msg-action-btn"
-                            onClick={() => copyToClipboard(m.content, `msg_${idx}`)}
-                            title="Copy entire response"
-                          >
-                            {copiedId === `msg_${idx}` ? (
-                              <><Check size={12} color="#10a37f" /> <span>Copied answer!</span></>
-                            ) : (
-                              <><Copy size={12} /> <span>Copy answer</span></>
-                            )}
-                          </button>
-
-                          <button 
-                            className="msg-action-btn"
-                            onClick={() => handleSpeakText(m.content, m.id || `msg_${idx}`)}
-                            title={currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? "Stop speaking" : "Read aloud with Astra's voice"}
-                          >
-                            {currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? (
-                              <><VolumeX size={12} color="#ef4444" /> <span style={{ color: '#ef4444' }}>Stop</span></>
-                            ) : (
-                              <><Volume2 size={12} /> <span>Read aloud</span></>
-                            )}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Interactive Sources & Drawer Trigger */}
-                      {m.sources && m.sources.length > 0 && (
-                        <div className="sources-tags">
-                          {m.sources.map((s, si) => (
-                            <button 
-                              key={si} 
-                              className="source-tag clickable-source-tag"
-                              onClick={() => setActiveSourceDrawer(s)}
-                              title="Click to view reference passage"
-                            >
-                              {s.url ? (
-                                <>🌐 {s.filename} <Info size={11} style={{ marginLeft: 3 }} /></>
-                              ) : (
-                                <>📄 {s.filename} ({Math.round(s.score * 100)}%) <Info size={11} style={{ marginLeft: 3 }} /></>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        <Search size={13} />
+                        <span>Deep Research</span>
+                      </button>
                     </div>
-                  </div>
-                ))
-              )}
-              {uploadProgress && (
-                <div className="message-row">
-                  <div className="avatar ai">
-                    <img 
-                      src="/logo.png" 
-                      alt="Astra Talk" 
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                    />
-                  </div>
-                  <div className="message-bubble" style={{ width: '100%' }}>
-                    <div className="upload-progress-container">
-                      <div className="upload-progress-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Loader2 size={16} className="upload-spinner" color="var(--accent)" />
-                          <span>{uploadProgress.stage}...</span>
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{uploadProgress.name}</span>
-                      </div>
-                      <div className="progress-bar-track">
-                        <div className="progress-bar-fill" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {researchState && (
-                <div className="message-row">
-                  <div className="avatar ai">
-                    <img 
-                      src="/logo.png" 
-                      alt="Astra Talk" 
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                    />
-                  </div>
-                  <div className="message-bubble">
-                    <div className="research-loading-box">
-                      {researchState.type === 'youtube' ? (
-                        <Video size={24} className="research-spinner" color="#ef4444" />
-                      ) : researchState.type === 'url' ? (
-                        <Globe size={24} className="research-spinner" />
+
+                    <div className="input-right-buttons">
+                      <button 
+                        className={`voice-mic-btn ${isListening ? 'listening' : ''}`}
+                        title={isListening ? "Listening... Click to stop" : "Voice Dictation (Web Speech API)"}
+                        onClick={toggleSpeechRecognition}
+                        type="button"
+                      >
+                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                      </button>
+
+                      {isStreaming ? (
+                        <button 
+                          className="emerald-send-btn" 
+                          onClick={handleStopGeneration}
+                          style={{ background: '#ef4444', color: '#fff' }}
+                          title="Stop Generating"
+                        >
+                          <StopCircle size={17} />
+                        </button>
                       ) : (
-                        <Search size={24} className="research-spinner" />
+                        <button 
+                          className="emerald-send-btn" 
+                          onClick={handleSend} 
+                          disabled={(!input.trim() && !selectedFile && !selectedImage) || isVisionAnalyzing}
+                          title="Send Message"
+                        >
+                          <Send size={16} />
+                        </button>
                       )}
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '2px' }}>
-                          {researchState.type === 'youtube'
-                            ? '📺 Extracting YouTube Transcript & Video...'
-                            : researchState.type === 'url'
-                            ? '🌐 Fetching & Reading Web Page...'
-                            : '🔍 Researching Live Web & News...'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {researchState.type === 'youtube' ? (
-                            <>Transcribing spoken audio & captions from <code style={{ color: '#ef4444' }}>{researchState.query.slice(0, 50)}</code></>
-                          ) : researchState.type === 'url' ? (
-                            <>Analyzing content from <code style={{ color: 'var(--accent)' }}>{researchState.query.slice(0, 50)}</code></>
-                          ) : (
-                            <>Searching multi-engine OpenSERP / SearXNG for: <strong style={{ color: 'var(--accent)' }}>"{researchState.query}"</strong></>
-                          )}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
-              )}
-              {isGeneratingInChatImage && (
-                <div className="message-row">
-                  <div className="avatar ai">
-                    <img 
-                      src="/logo.png" 
-                      alt="Astra Talk" 
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                    />
+
+                {speechError && (
+                  <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚠️ {speechError}</span>
+                    <button 
+                      onClick={() => setSpeechError(null)} 
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className="message-bubble">
-                    <div className="image-gen-placeholder">
-                      <div className="shimmer-box">
-                        <Sparkles size={28} className="pulse-spinner" />
-                        <span style={{ fontWeight: 500, fontSize: '14px' }}>Rendering Photorealistic Image...</span>
-                        <span style={{ fontSize: '11px', opacity: 0.8 }}>Realistic Vision v6 (FP16) • Euler Ancestral (20 steps)</span>
-                      </div>
-                    </div>
+                )}
+
+                {isListening && (
+                  <div style={{ fontSize: '12px', color: '#22c55e', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'mic-pulse 1s infinite' }} />
+                    <span>Listening... Speak into your microphone</span>
                   </div>
-                </div>
-              )}
-              {isVisionAnalyzing && (
-                <div className="message-row">
-                  <div className="avatar ai">
-                    <img 
-                      src="/logo.png" 
-                      alt="Astra Talk" 
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
-                    />
-                  </div>
-                  <div className="message-bubble" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Loader2 size={16} className="pulse-spinner" />
-                    <span>Analyzing image locally with {selectedModel}...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Dock */}
-            <div className="input-dock">
-              {/* Staged RAG Document Pill */}
-              {selectedFile && (
-                <div className="pending-file-chip">
-                  <Paperclip size={14} color="var(--accent)" />
-                  <span>RAG: <strong>{selectedFile.name}</strong></span>
-                  <button 
-                    onClick={() => setSelectedFile(null)} 
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', marginLeft: '4px' }}
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              )}
-
-              {/* Staged Vision Image Pill with Thumbnail */}
-              {selectedImage && (
-                <div className="pending-file-chip" style={{ gap: '8px' }}>
-                  {imagePreviewUrl && (
-                    <img src={imagePreviewUrl} alt="Preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
-                  )}
-                  <span>Vision: <strong>{selectedImage.name}</strong></span>
-                  <button 
-                    onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); }} 
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', marginLeft: '4px' }}
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              )}
-
-              <div className="input-box">
-                {/* Hidden File Inputs */}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{ display: 'none' }} 
-                  accept=".pdf,.docx,.txt,.csv,.xlsx,.md" 
-                  onChange={(e) => {
-                    if (e.target.files[0]) {
-                      setSelectedFile(e.target.files[0]);
-                      setSelectedImage(null);
-                      setImagePreviewUrl(null);
-                    }
-                  }} 
-                />
-                <input 
-                  type="file" 
-                  ref={imageInputRef} 
-                  style={{ display: 'none' }} 
-                  accept="image/*" 
-                  onChange={(e) => {
-                    const f = e.target.files[0];
-                    if (f) {
-                      setSelectedImage(f);
-                      setSelectedFile(null);
-                      setImagePreviewUrl(URL.createObjectURL(f));
-                    }
-                  }} 
-                />
-
-                {/* Direct in-chat Action Buttons */}
-                <button 
-                  className="dock-action-btn" 
-                  title="Upload Document for Conversation RAG"
-                  onClick={() => fileInputRef.current?.click()}
-                  type="button"
-                >
-                  <Paperclip size={18} />
-                </button>
-
-                <button 
-                  className="dock-action-btn" 
-                  title="Upload Image for Local Vision Analysis"
-                  onClick={() => imageInputRef.current?.click()}
-                  type="button"
-                >
-                  <ImageIcon size={18} />
-                </button>
-
-                {/* Web Speech API Microphone Dictation Button */}
-                <button 
-                  className={`dock-action-btn ${isListening ? 'listening' : ''}`}
-                  title={isListening ? "Listening... Click to stop voice dictation" : "Voice Dictation (Web Speech API)"}
-                  onClick={toggleSpeechRecognition}
-                  type="button"
-                  style={{
-                    color: isListening ? '#ef4444' : undefined,
-                    animation: isListening ? 'mic-pulse 1.5s infinite' : undefined
-                  }}
-                >
-                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-                </button>
-
-                <textarea 
-                  rows={1}
-                  placeholder={
-                    isIncognito
-                      ? `Incognito mode… No conversation or memory will be saved.`
-                      : isRagOnly
-                        ? `RAG Only Mode… Questions will be answered strictly from uploaded documents.`
-                        : selectedFile 
-                          ? `Ask questions about ${selectedFile.name}...` 
-                          : selectedImage 
-                            ? `Ask anything about this image (or press Send for analysis)...` 
-                            : `Message ${selectedModel}… ("remember <fact>", "research <topic>", or "create a image...")`
-                  }
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                />
-                {isStreaming ? (
-                  <button 
-                    className="send-btn" 
-                    onClick={handleStopGeneration}
-                    style={{ background: '#ef4444' }}
-                    title="Stop Generating (Cancel Stream)"
-                  >
-                    <StopCircle size={15} />
-                  </button>
-                ) : (
-                  <button 
-                    className="send-btn" 
-                    onClick={handleSend} 
-                    disabled={(!input.trim() && !selectedFile && !selectedImage) || isVisionAnalyzing}
-                  >
-                    <Send size={15} />
-                  </button>
                 )}
               </div>
-              {speechError && (
-                <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>⚠️ {speechError}</span>
-                  <button 
-                    onClick={() => setSpeechError(null)} 
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              {isListening && (
-                <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'mic-pulse 1s infinite' }} />
-                  <span>Microphone active — Listening to your voice... (click Mic to finish)</span>
-                </div>
-              )}
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Upload files for RAG, images for vision, or speak via Web Speech API. Images generated safely via Realistic Vision v6.
-              </span>
             </div>
-          </>
+
+            {/* Right History Chat Card */}
+            <aside className="history-sidebar-card">
+              <div className="history-header-row">
+                <h3 className="history-title">History Chat</h3>
+                <button className="new-chat-pill-btn" onClick={startNewChat}>
+                  <Plus size={13} />
+                  <span>New Chat</span>
+                </button>
+              </div>
+
+              <input 
+                type="text" 
+                className="history-search-input"
+                placeholder="Search conversations..."
+                value={historySearchQuery}
+                onChange={(e) => setHistorySearchQuery(e.target.value)}
+              />
+
+              <div className="history-groups-list">
+                {Object.entries(groups).map(([groupTitle, convs]) => (
+                  convs.length > 0 && (
+                    <div key={groupTitle}>
+                      <div className="history-group-label">{groupTitle}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {convs.map(c => (
+                          <div 
+                            key={c.id} 
+                            className={`history-item-pill ${c.id === activeConvId ? 'active' : ''}`}
+                            onClick={() => { setActiveConvId(c.id); setActiveTab('chat'); }}
+                          >
+                            <MessageSquare size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
+                            <span className="history-item-title" title={c.title}>
+                              {c.title}
+                            </span>
+                            <button 
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '2px' }}
+                              onClick={(e) => deleteConversation(e, c.id)}
+                              title="Delete Conversation"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                ))}
+
+                {conversations.length === 0 && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
+                    No conversations yet.
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
         )}
 
         {activeTab === 'image_gen' && (
@@ -1695,7 +1794,7 @@ export default function App() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Interactive Source Reference Drawer Modal */}
       {activeSourceDrawer && (
