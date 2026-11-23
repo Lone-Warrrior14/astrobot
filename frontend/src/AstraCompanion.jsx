@@ -4,7 +4,7 @@ import { X, Sparkles, Volume2, VolumeX, Minimize2, Send } from 'lucide-react';
 /**
  * Clean speech input by stripping emojis, code symbols and excessive formatting
  */
-const cleanForSpeech = (rawText) => {
+export const cleanForSpeech = (rawText) => {
   if (!rawText) return '';
   return rawText
     // Strip markdown formatting like **bold**, *italic*, `code`, # headings, > quotes
@@ -21,7 +21,7 @@ const cleanForSpeech = (rawText) => {
     .trim();
 };
 
-const speakAstra = (text, isMuted, onStart, onEnd) => {
+export const speakAstra = (text, isMuted, onStart, onEnd) => {
   if (isMuted || !window.speechSynthesis) {
     if (onEnd) onEnd();
     return;

@@ -4,9 +4,9 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX
 } from 'lucide-react';
-import AstraCompanion from './AstraCompanion';
+import AstraCompanion, { speakAstra, cleanForSpeech } from './AstraCompanion';
 
 export default function App() {
   const [conversations, setConversations] = useState([]);
@@ -43,6 +43,10 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState(null);
   const recognitionRef = useRef(null);
+
+  // Auto Speech Back (TTS) State using Astra's Voice
+  const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
+  const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
 
   // SD Image Generation State
   const [imagePrompt, setImagePrompt] = useState('');
@@ -133,6 +137,26 @@ export default function App() {
         } catch (e) {}
       }
     }
+  };
+
+  // Play speech out loud using Astra's voice
+  const handleSpeakText = (text, msgId = null) => {
+    if (!window.speechSynthesis) return;
+
+    // If currently speaking this message, toggle off
+    if (currentlySpeakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeakingMsgId(null);
+      return;
+    }
+
+    setCurrentlySpeakingMsgId(msgId);
+    speakAstra(
+      text,
+      false, // not muted
+      () => setCurrentlySpeakingMsgId(msgId),
+      () => setCurrentlySpeakingMsgId(null)
+    );
   };
 
   useEffect(() => {
@@ -408,8 +432,14 @@ export default function App() {
         }
       }
 
-      setLatestAssistantReply(assistantText.replace(/<think>[\s\S]*?<\/think>/g, '').trim());
+      const cleanAssistantReply = assistantText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      setLatestAssistantReply(cleanAssistantReply);
       fetchConversations();
+
+      // If Speech Back is enabled, speak the answer out loud using Astra's voice
+      if (isSpeechBackEnabled && cleanAssistantReply) {
+        handleSpeakText(cleanAssistantReply, assistantId);
+      }
 
     } catch (err) {
       if (err.name === 'AbortError') {
@@ -917,6 +947,35 @@ export default function App() {
               <span>{isRagOnly ? "RAG Only ON" : "RAG Only"}</span>
             </button>
 
+            <button
+              onClick={() => {
+                const next = !isSpeechBackEnabled;
+                setIsSpeechBackEnabled(next);
+                if (!next && window.speechSynthesis) {
+                  window.speechSynthesis.cancel();
+                  setCurrentlySpeakingMsgId(null);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: isSpeechBackEnabled ? '1px solid #38bdf8' : '1px solid var(--border)',
+                background: isSpeechBackEnabled ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-tertiary)',
+                color: isSpeechBackEnabled ? '#38bdf8' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.2s'
+              }}
+              title={isSpeechBackEnabled ? "Speech Back ON: Assistant will speak responses out loud using Astra's voice" : "Enable Speech Back (Speaks responses out loud with Astra's voice)"}
+            >
+              {isSpeechBackEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+              <span>{isSpeechBackEnabled ? "Speech Back ON" : "Speech Back"}</span>
+            </button>
+
             <button 
               onClick={toggleIncognito}
               style={{
@@ -1164,6 +1223,18 @@ export default function App() {
                               <><Check size={12} color="#10a37f" /> <span>Copied answer!</span></>
                             ) : (
                               <><Copy size={12} /> <span>Copy answer</span></>
+                            )}
+                          </button>
+
+                          <button 
+                            className="msg-action-btn"
+                            onClick={() => handleSpeakText(m.content, m.id || `msg_${idx}`)}
+                            title={currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? "Stop speaking" : "Read aloud with Astra's voice"}
+                          >
+                            {currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? (
+                              <><VolumeX size={12} color="#ef4444" /> <span style={{ color: '#ef4444' }}>Stop</span></>
+                            ) : (
+                              <><Volume2 size={12} /> <span>Read aloud</span></>
                             )}
                           </button>
                         </div>
