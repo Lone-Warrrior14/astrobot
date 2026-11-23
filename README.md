@@ -9,6 +9,7 @@ Far beyond a traditional chat clone, Astra Talk combines:
 - **Dynamic VRAM Handoff Image Studio** (Realistic Vision v6 & SDXL Base 1.0)
 - **Interactive Living Companion Easter Egg (`/astra` & `/astraonly`)** with real-time reactive animations, tactile gestures, realistic cat purrs, and spoken dialogue.
 - **Full Architecture & Flow Documentation**: Interactive Mermaid sequence and class diagrams in [frontend/FLOW_AND_UML.md](frontend/FLOW_AND_UML.md).
+- **Tools, Setups & Download Links**: Complete installation guide with official URLs and docker run commands in [SETUP_AND_TOOLS.md](SETUP_AND_TOOLS.md).
 
 ---
 
