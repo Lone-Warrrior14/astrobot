@@ -1070,3 +1070,135 @@ body {
   line-height: 1.5;
   font-family: 'Fira Code', Consolas, Monaco, monospace;
 }
+
+/* Mouse Follow Ambient Flash / Glow in Background */
+.ambient-mouse-glow {
+  position: fixed;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.05) 40%, transparent 70%);
+  transition: opacity 0.3s ease, transform 0.06s ease-out;
+  filter: blur(40px);
+}
+
+/* Floating Scroll-to-Bottom Button */
+.scroll-bottom-pill-btn {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(13, 20, 16, 0.92);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(34, 197, 94, 0.2);
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  animation: fadeIn 0.2s ease;
+}
+
+.scroll-bottom-pill-btn:hover {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.6);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 22px rgba(34, 197, 94, 0.35);
+}
+
+.unread-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  animation: pulse-dot 1.5s infinite;
+}
+
+/* User Message Edit & Action Buttons */
+.user-msg-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.message-row:hover .user-msg-action-bar {
+  opacity: 1;
+}
+
+.user-edit-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.user-edit-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  min-height: 60px;
+}
+
+.user-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-edit-save {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #34d399;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit-save:hover {
+  background: #22c55e;
+  color: #042f1a;
+}
+
+.btn-edit-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-edit-cancel:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+

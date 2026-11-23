@@ -5,7 +5,8 @@ import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
   Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX,
-  Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight
+  Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight,
+  ArrowDown, Edit2, RotateCw
 } from 'lucide-react';
 import AstraCompanion, { speakAstra, cleanForSpeech } from './AstraCompanion';
 
@@ -98,10 +99,68 @@ export default function App() {
   // Source Drawer Preview State
   const [activeSourceDrawer, setActiveSourceDrawer] = useState(null);
 
+  // Dynamic Mouse Background Flash / Aura
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
+
+  // Floating Scroll-To-Bottom & Unread Tracker
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+  const chatScrollRef = useRef(null);
+
+  // Message Editing State
+  const [editingMsgId, setEditingMsgId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  // Track global mouse position for ambient background glow
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Handle scroll events in chat messages container
+  const handleChatScroll = () => {
+    if (!chatScrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 60;
+    setShowScrollBottom(!isAtBottom);
+    if (isAtBottom) {
+      setHasUnread(false);
+    }
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+      setHasUnread(false);
+      setShowScrollBottom(false);
+    }
+  };
+
+  // Re-generate assistant response starting from user message index
+  const handleRegenerateFromUser = (msgContent, userMsgIdx) => {
+    if (isStreaming) return;
+    // Slice history up to user message
+    const trimmed = messages.slice(0, userMsgIdx);
+    setMessages(trimmed);
+    handleSend(msgContent);
+  };
+
+  // Save edited user message and trigger response
+  const handleSaveEditedMessage = (userMsgIdx) => {
+    if (!editingText.trim() || isStreaming) return;
+    const newContent = editingText.trim();
+    setEditingMsgId(null);
+    setEditingText('');
+    handleRegenerateFromUser(newContent, userMsgIdx);
+  };
 
   // Initialize Web Speech API SpeechRecognition
   useEffect(() => {
@@ -461,6 +520,14 @@ export default function App() {
                   setIsGeneratingInChatImage(false);
                 }
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantText } : m));
+
+                // Mark unread if user has scrolled away from bottom
+                if (chatScrollRef.current) {
+                  const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
+                  if (scrollHeight - scrollTop - clientHeight > 100) {
+                    setHasUnread(true);
+                  }
+                }
               }
               if (data.sources) {
                 sources = data.sources;
@@ -854,6 +921,16 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Dynamic Mouse Moving Ambient Flash / Glow */}
+      <div 
+        className="ambient-mouse-glow" 
+        style={{ 
+          left: `${mousePos.x}px`, 
+          top: `${mousePos.y}px`,
+          opacity: mousePos.x > 0 ? (theme === 'dark' ? 1 : 0.6) : 0
+        }} 
+      />
+
       {/* Left Rail Icon Bar */}
       <aside className="rail-sidebar">
         <div className="rail-top">
@@ -1080,7 +1157,7 @@ export default function App() {
               </div>
 
               {/* Chat Messages or Empty Hero Vortex */}
-              <div className="chat-messages">
+              <div className="chat-messages" ref={chatScrollRef} onScroll={handleChatScroll}>
                 {messages.length === 0 ? (
                   <div className="empty-hero-stage">
                     <div className="hero-vortex-glow">
@@ -1162,66 +1239,118 @@ export default function App() {
                         )}
                       </div>
                       <div className="message-bubble">
-                        {m.thinking_content && showThinking && (
-                          <div className="thinking-box">
-                            <strong>🧠 Thinking Process:</strong>
-                            <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
+                        {/* Inline User Message Editing */}
+                        {m.role === 'user' && editingMsgId === (m.id || `msg_${idx}`) ? (
+                          <div className="user-edit-box">
+                            <textarea
+                              className="user-edit-textarea"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              rows={2}
+                              autoFocus
+                            />
+                            <div className="user-edit-actions">
+                              <button 
+                                className="btn-edit-cancel"
+                                onClick={() => { setEditingMsgId(null); setEditingText(''); }}
+                              >
+                                Cancel
+                              </button>
+                              <button 
+                                className="btn-edit-save"
+                                onClick={() => handleSaveEditedMessage(idx)}
+                              >
+                                Save & Submit
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {m.thinking_content && showThinking && (
+                              <div className="thinking-box">
+                                <strong>🧠 Thinking Process:</strong>
+                                <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
+                              </div>
+                            )}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeHighlight]}
+                              components={{
+                                a({ href, children, ...props }) {
+                                  const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
+                                  return (
+                                    <a 
+                                      href={href} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="chat-inline-link"
+                                      {...props}
+                                    >
+                                      {isBareLongUrl ? '🌐 [Source Link]' : children}
+                                    </a>
+                                  );
+                                },
+                                pre({ children, ...props }) {
+                                  return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
+                                },
+                                code({ node, inline, className, children, ...props }) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const codeString = String(children).replace(/\n$/, '');
+                                  if (!inline && (match || codeString.includes('\n'))) {
+                                    const codeId = `code_${Math.random().toString(36).substring(2, 9)}`;
+                                    return (
+                                      <div className="code-block-container">
+                                        <div className="code-block-header">
+                                          <span className="code-lang-label">{match ? match[1] : 'code'}</span>
+                                          <button 
+                                            className="copy-code-btn"
+                                            onClick={() => copyToClipboard(codeString, codeId)}
+                                            title="Copy code"
+                                          >
+                                            {copiedId === codeId ? (
+                                              <><Check size={12} color="#10a37f" /> <span>Copied!</span></>
+                                            ) : (
+                                              <><Copy size={12} /> <span>Copy code</span></>
+                                            )}
+                                          </button>
+                                        </div>
+                                        <code className={className} {...props}>
+                                          {children}
+                                        </code>
+                                      </div>
+                                    );
+                                  }
+                                  return <code className={className} {...props}>{children}</code>;
+                                }
+                              }}
+                            >
+                              {m.content}
+                            </ReactMarkdown>
+                          </>
+                        )}
+
+                        {/* Action Bar Beneath User Bubble (Edit & Resend) */}
+                        {m.role === 'user' && editingMsgId !== (m.id || `msg_${idx}`) && (
+                          <div className="user-msg-action-bar">
+                            <button
+                              className="msg-action-btn"
+                              onClick={() => {
+                                setEditingMsgId(m.id || `msg_${idx}`);
+                                setEditingText(m.content);
+                              }}
+                              title="Edit message & regenerate response"
+                            >
+                              <Edit2 size={11} /> <span>Edit</span>
+                            </button>
+                            <button
+                              className="msg-action-btn"
+                              onClick={() => handleRegenerateFromUser(m.content, idx)}
+                              title="Regenerate assistant response"
+                            >
+                              <RotateCw size={11} /> <span>Retry</span>
+                            </button>
                           </div>
                         )}
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]} 
-                          rehypePlugins={[rehypeHighlight]}
-                          components={{
-                            a({ href, children, ...props }) {
-                              const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
-                              return (
-                                <a 
-                                  href={href} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  className="chat-inline-link"
-                                  {...props}
-                                >
-                                  {isBareLongUrl ? '🌐 [Source Link]' : children}
-                                </a>
-                              );
-                            },
-                            pre({ children, ...props }) {
-                              return <pre className="code-pre-wrapper" {...props}>{children}</pre>;
-                            },
-                            code({ node, inline, className, children, ...props }) {
-                              const match = /language-(\w+)/.exec(className || '');
-                              const codeString = String(children).replace(/\n$/, '');
-                              if (!inline && (match || codeString.includes('\n'))) {
-                                const codeId = `code_${Math.random().toString(36).substring(2, 9)}`;
-                                return (
-                                  <div className="code-block-container">
-                                    <div className="code-block-header">
-                                      <span className="code-lang-label">{match ? match[1] : 'code'}</span>
-                                      <button 
-                                        className="copy-code-btn"
-                                        onClick={() => copyToClipboard(codeString, codeId)}
-                                        title="Copy code"
-                                      >
-                                        {copiedId === codeId ? (
-                                          <><Check size={12} color="#10a37f" /> <span>Copied!</span></>
-                                        ) : (
-                                          <><Copy size={12} /> <span>Copy code</span></>
-                                        )}
-                                      </button>
-                                    </div>
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  </div>
-                                );
-                              }
-                              return <code className={className} {...props}>{children}</code>;
-                            }
-                          }}
-                        >
-                          {m.content}
-                        </ReactMarkdown>
 
                         {/* Action Bar Beneath Assistant Bubble */}
                         {m.role === 'assistant' && m.content && (
@@ -1249,6 +1378,17 @@ export default function App() {
                                 <><Volume2 size={12} /> <span>Read aloud</span></>
                               )}
                             </button>
+
+                            {/* Regenerate Assistant Response from previous user prompt */}
+                            {idx > 0 && messages[idx - 1]?.role === 'user' && (
+                              <button
+                                className="msg-action-btn"
+                                onClick={() => handleRegenerateFromUser(messages[idx - 1].content, idx - 1)}
+                                title="Regenerate this response"
+                              >
+                                <RotateCw size={11} /> <span>Regenerate</span>
+                              </button>
+                            )}
                           </div>
                         )}
 
@@ -1379,6 +1519,19 @@ export default function App() {
                     </div>
                   </div>
                 )}
+                {/* Floating Scroll-to-Bottom Button */}
+                {showScrollBottom && (
+                  <button 
+                    className="scroll-bottom-pill-btn"
+                    onClick={() => scrollToBottom(true)}
+                    title="Scroll to latest messages"
+                  >
+                    <ArrowDown size={14} />
+                    <span>{hasUnread ? "New Response ↓" : "Scroll to Bottom"}</span>
+                    {hasUnread && <span className="unread-badge-dot" />}
+                  </button>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
