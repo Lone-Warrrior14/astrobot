@@ -444,6 +444,26 @@ body {
   background: var(--bg-hover);
 }
 
+.dock-action-btn.listening {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+@keyframes mic-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* Upload Progress & Animation */
 .upload-progress-container {
   display: flex;

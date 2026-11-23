@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
-  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info
+  Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff
 } from 'lucide-react';
 import AstraCompanion from './AstraCompanion';
 
@@ -39,6 +39,11 @@ export default function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
+  // Web Speech API Voice Dictation State
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState(null);
+  const recognitionRef = useRef(null);
+
   // SD Image Generation State
   const [imagePrompt, setImagePrompt] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -53,6 +58,82 @@ export default function App() {
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  // Initialize Web Speech API SpeechRecognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = navigator.language || 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError(null);
+      };
+
+      recognition.onresult = (event) => {
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcriptChunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            setInput(prev => (prev ? prev + ' ' : '') + transcriptChunk.trim());
+          } else {
+            currentTranscript += transcriptChunk;
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech Recognition notice:', event.error);
+        if (event.error === 'not-allowed') {
+          setSpeechError('Microphone access denied. Please allow microphone permission in your browser.');
+        } else if (event.error !== 'no-speech') {
+          setSpeechError(`Speech error: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+    };
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      alert('Speech Recognition is not supported by your current browser. Please use Google Chrome, Edge, or a Chromium-based browser.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setSpeechError(null);
+      try {
+        recognitionRef.current?.start();
+      } catch (err) {
+        console.error('Failed to start speech recognition:', err);
+        // If already started or in transition, restart
+        try {
+          recognitionRef.current?.stop();
+          setTimeout(() => recognitionRef.current?.start(), 150);
+        } catch (e) {}
+      }
+    }
+  };
 
   useEffect(() => {
     fetchConversations();
@@ -1295,6 +1376,20 @@ export default function App() {
                   <ImageIcon size={18} />
                 </button>
 
+                {/* Web Speech API Microphone Dictation Button */}
+                <button 
+                  className={`dock-action-btn ${isListening ? 'listening' : ''}`}
+                  title={isListening ? "Listening... Click to stop voice dictation" : "Voice Dictation (Web Speech API)"}
+                  onClick={toggleSpeechRecognition}
+                  type="button"
+                  style={{
+                    color: isListening ? '#ef4444' : undefined,
+                    animation: isListening ? 'mic-pulse 1.5s infinite' : undefined
+                  }}
+                >
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                </button>
+
                 <textarea 
                   rows={1}
                   placeholder={
@@ -1336,8 +1431,25 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {speechError && (
+                <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⚠️ {speechError}</span>
+                  <button 
+                    onClick={() => setSpeechError(null)} 
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {isListening && (
+                <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'mic-pulse 1s infinite' }} />
+                  <span>Microphone active — Listening to your voice... (click Mic to finish)</span>
+                </div>
+              )}
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Upload files for RAG or images for vision right here. Images generated safely via Realistic Vision v6 (~6s).
+                Upload files for RAG, images for vision, or speak via Web Speech API. Images generated safely via Realistic Vision v6.
               </span>
             </div>
           </>
