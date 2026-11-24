@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Volume2, VolumeX, Minimize2, Send } from 'lucide-react';
+import { 
+  X, Sparkles, Volume2, VolumeX, Minimize2, Send, Paperclip, Command, 
+  ImageIcon, Figma, MonitorIcon, Lightbulb, Search, Flame
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from './lib/utils';
 
 /**
  * Clean speech input by stripping emojis, code symbols and excessive formatting
@@ -124,6 +129,29 @@ export default function AstraCompanion({
   const [position, setPosition] = useState({ x: window.innerWidth - 220, y: window.innerHeight - 260 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Animated Chat states for AstraOnly
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [inputFocused, setInputFocused] = useState(false);
+  const commandPaletteRef = useRef(null);
+
+  const commandSuggestions = [
+    { icon: <Search className="w-4 h-4 text-emerald-400" />, label: "Web Research", description: "Search live web with SearXNG", prefix: "research " },
+    { icon: <Sparkles className="w-4 h-4 text-cyan-400" />, label: "Generate Image", description: "Create SDXL image", prefix: "create a image of " },
+    { icon: <Lightbulb className="w-4 h-4 text-amber-400" />, label: "Remember Fact", description: "Store in long-term memory", prefix: "remember " },
+    { icon: <Flame className="w-4 h-4 text-rose-400" />, label: "Talk Persona", description: "Casual friend chat", prefix: "hey astra, " },
+  ];
+
+  // Track mouse coordinates for background glowing mesh
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const purrAudioRef = useRef(null);
   const boopAudioRef = useRef(null);
@@ -487,7 +515,7 @@ export default function AstraCompanion({
   if (isAstraOnly) {
     return (
       <div 
-        className="astra-only-backdrop"
+        className="astra-only-backdrop relative w-screen h-screen overflow-hidden flex flex-col items-center justify-between text-white p-6 select-none"
         style={{
           position: 'fixed',
           top: 0,
@@ -495,123 +523,108 @@ export default function AstraCompanion({
           width: '100vw',
           height: '100vh',
           zIndex: 99999,
-          background: 'radial-gradient(circle at 50% 40%, #0d1e33 0%, #060b14 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          userSelect: 'none'
+          background: 'radial-gradient(circle at 50% 30%, #0d1e17 0%, #050b08 100%)',
         }}
       >
-        {/* Top Control Header */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          right: '24px',
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center'
-        }}>
-          <button
-            onClick={() => {
-              const nextMuted = !isMuted;
-              setIsMuted(nextMuted);
-              if (window.speechSynthesis) window.speechSynthesis.cancel();
-              if (!nextMuted) speakAstra("Voice enabled!", false);
-            }}
-            title={isMuted ? "Unmute Voice" : "Mute Voice"}
-            style={{
-              background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)',
-              border: `1px solid ${isMuted ? '#ef4444' : '#0ea5e9'}`,
-              color: isMuted ? '#ef4444' : '#38bdf8',
-              borderRadius: '24px',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            <span>{isMuted ? 'Muted' : 'Voice Active'}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (window.speechSynthesis) window.speechSynthesis.cancel();
-              onExitAstraOnly();
-            }}
-            title="Exit Astra Only mode and return to Chat"
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#fff',
-              borderRadius: '24px',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <Minimize2 size={15} />
-            <span>Return to Chat</span>
-          </button>
+        {/* Animated Background Mesh Orbs (similar to AnimatedAIChat) */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-10 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full filter blur-[128px] animate-pulse" />
+          <div className="absolute bottom-12 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full filter blur-[128px] animate-pulse delay-700" />
+          <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-cyan-500/10 rounded-full filter blur-[96px] animate-pulse delay-1000" />
         </div>
 
-        {/* Center Big Astra Mascot & Speech */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          maxWidth: '700px',
-          padding: '0 20px',
-          marginTop: '-40px'
-        }}>
-          {/* Large Dynamic Speech Bubble */}
-          {speechBubble && (
-            <div style={{
-              background: 'rgba(15, 23, 42, 0.88)',
-              border: '1px solid rgba(56, 189, 248, 0.5)',
-              borderRadius: '24px',
-              padding: '16px 28px',
-              fontSize: '17px',
-              lineHeight: 1.5,
-              fontWeight: 500,
-              color: '#e0f2fe',
-              textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0, 180, 255, 0.25)',
-              backdropFilter: 'blur(16px)',
-              marginBottom: '24px',
-              animation: 'fadeIn 0.3s ease',
-              maxHeight: '160px',
-              overflowY: 'auto'
-            }}>
-              {speechBubble}
-            </div>
-          )}
+        {/* Dynamic Mouse Tracking Radial Beam */}
+        {inputFocused && (
+          <motion.div 
+            className="fixed w-[45rem] h-[45rem] rounded-full pointer-events-none z-0 opacity-15 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 blur-[100px]"
+            animate={{
+              x: mousePosition.x - 360,
+              y: mousePosition.y - 360,
+            }}
+            transition={{
+              type: "spring",
+              damping: 25,
+              stiffness: 150,
+              mass: 0.5,
+            }}
+          />
+        )}
 
-          {/* Big Mascot Frame */}
+        {/* Top Floating Control Pill Bar */}
+        <header className="relative z-20 w-full max-w-4xl flex items-center justify-between pt-2 px-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Sparkles size={16} className="text-black" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide text-white/90">Astra Studio</h2>
+              <span className="text-[11px] text-emerald-400 font-mono">Companion Mode</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const nextMuted = !isMuted;
+                setIsMuted(nextMuted);
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                if (!nextMuted) speakAstra("Voice enabled!", false);
+              }}
+              title={isMuted ? "Unmute Voice" : "Mute Voice"}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 backdrop-blur-xl border transition-all",
+                isMuted 
+                  ? "bg-red-500/15 border-red-500/40 text-red-400" 
+                  : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-lg shadow-emerald-500/10"
+              )}
+            >
+              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              <span>{isMuted ? 'Muted' : 'Astra Voice Active'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                onExitAstraOnly();
+              }}
+              title="Return to Standard Chat"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white/80 transition-all backdrop-blur-xl"
+            >
+              <Minimize2 size={13} />
+              <span>Exit Studio</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Center Mascot & Interactive Speech Area */}
+        <main className="relative z-10 flex flex-col items-center justify-center max-w-2xl w-full my-auto text-center px-4">
+          {/* Animated Glowing Speech Bubble */}
+          <AnimatePresence>
+            {speechBubble && (
+              <motion.div 
+                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="backdrop-blur-2xl bg-white/[0.04] border border-emerald-500/30 rounded-2xl p-5 mb-6 max-w-xl text-center shadow-2xl shadow-emerald-950/40"
+              >
+                <div className="flex items-center justify-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                  <Sparkles size={13} />
+                  <span>Astra</span>
+                </div>
+                <p className="text-base sm:text-lg text-emerald-50 font-medium leading-relaxed">
+                  {speechBubble}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Big Mascot Frame with Radial Glow */}
           <div 
             onClick={handleWidgetClick}
+            className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-full flex items-center justify-center cursor-pointer transition-transform duration-300 hover:scale-105"
             style={{
-              position: 'relative',
-              width: '320px',
-              height: '320px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(16, 185, 129, 0.08) 60%, transparent 80%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 0 80px rgba(14, 165, 233, 0.25)'
+              background: 'radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(6, 78, 59, 0.12) 50%, transparent 75%)',
+              boxShadow: '0 0 100px rgba(16, 185, 129, 0.25)'
             }}
           >
             {/* Interactive head touch zone */}
@@ -622,11 +635,11 @@ export default function AstraCompanion({
               title="Poke or rub Astra's head!"
               style={{
                 position: 'absolute',
-                top: '30px',
+                top: '25px',
                 width: '180px',
                 height: '140px',
                 borderRadius: '50%',
-                zIndex: 10,
+                zIndex: 20,
                 cursor: 'pointer'
               }}
             />
@@ -635,102 +648,151 @@ export default function AstraCompanion({
               src={currentGif} 
               alt="Astra Companion" 
               onError={(e) => {
-                console.warn("Astra GIF failed to load, falling back to idle:", e.target.src);
                 e.target.src = '/astra_gifs/idle.gif';
               }}
-              style={{
-                width: '300px',
-                height: '300px',
-                objectFit: 'contain',
-                pointerEvents: 'none',
-                filter: 'drop-shadow(0 15px 30px rgba(0, 240, 255, 0.4))'
-              }}
+              className="w-56 h-56 sm:w-72 sm:h-72 object-contain pointer-events-none drop-shadow-[0_20px_35px_rgba(16,185,129,0.35)]"
             />
           </div>
 
-          <div style={{
-            marginTop: '16px',
-            fontSize: '13px',
-            color: '#64748b',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            fontWeight: 600
-          }}>
-            {animState === 'sleeping' ? '😴 Astra is napping (type below or click to wake)' : '✨ Tap head to poke • Rub head to pet'}
+          <div className="mt-4 text-xs font-mono tracking-wider text-emerald-400/60 uppercase">
+            {animState === 'sleeping' 
+              ? '😴 Astra is napping (type below or click to wake)' 
+              : '✨ Tap head to poke • Rub head to pet'}
           </div>
-        </div>
+        </main>
 
-        {/* Bottom Clean Chat Input */}
-        <div style={{
-          position: 'absolute',
-          bottom: '36px',
-          width: '100%',
-          maxWidth: '680px',
-          padding: '0 20px',
-          display: 'flex',
-          gap: '12px'
-        }}>
-          <div style={{
-            position: 'relative',
-            flex: 1,
-            background: 'rgba(15, 23, 42, 0.9)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '28px',
-            padding: '6px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(12px)'
-          }}>
-            <input 
-              type="text"
-              placeholder="Talk with Astra... (Speaks replies out loud ✨)"
-              value={localInput}
-              onChange={(e) => setLocalInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && localInput.trim() && !isStreaming) {
-                  const query = localInput.trim();
-                  setLocalInput('');
-                  onSendMessage(query);
-                }
-              }}
-              style={{
-                flex: 1,
-                background: 'none',
-                border: 'none',
-                outline: 'none',
-                color: '#fff',
-                fontSize: '16px',
-                padding: '10px 6px'
-              }}
-            />
-            <button
-              onClick={() => {
-                if (localInput.trim() && !isStreaming) {
-                  const query = localInput.trim();
-                  setLocalInput('');
-                  onSendMessage(query);
-                }
-              }}
-              disabled={!localInput.trim() || isStreaming}
-              style={{
-                background: localInput.trim() ? 'linear-gradient(135deg, #0ea5e9, #10b981)' : 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: localInput.trim() ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Send size={16} />
-            </button>
+        {/* Bottom Floating Command Bar & Input (Animated AI Chat Style) */}
+        <footer className="relative z-20 w-full max-w-2xl pb-4">
+          <motion.div 
+            className="relative backdrop-blur-2xl bg-white/[0.03] rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/60 overflow-hidden"
+            initial={{ scale: 0.98 }}
+            animate={{ scale: 1 }}
+          >
+            {/* Command Palette Dropdown */}
+            <AnimatePresence>
+              {showCommandPalette && (
+                <motion.div 
+                  ref={commandPaletteRef}
+                  className="absolute left-3 right-3 bottom-full mb-2 backdrop-blur-xl bg-black/90 rounded-xl z-50 shadow-2xl border border-emerald-500/20 overflow-hidden"
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="py-1">
+                    {commandSuggestions.map((suggestion, index) => (
+                      <div
+                        key={suggestion.prefix}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 py-2 text-xs transition-colors cursor-pointer",
+                          activeSuggestion === index 
+                            ? "bg-emerald-500/15 text-emerald-200" 
+                            : "text-white/70 hover:bg-white/5"
+                        )}
+                        onClick={() => {
+                          setLocalInput(suggestion.prefix);
+                          setShowCommandPalette(false);
+                        }}
+                      >
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          {suggestion.icon}
+                        </div>
+                        <div className="font-medium text-white">{suggestion.label}</div>
+                        <div className="text-white/40 text-[11px] ml-auto font-mono">
+                          {suggestion.prefix}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Input Box */}
+            <div className="p-3 sm:p-4">
+              <input 
+                type="text"
+                placeholder="Ask Astra anything... (Speaks answers out loud ✨)"
+                value={localInput}
+                onChange={(e) => {
+                  setLocalInput(e.target.value);
+                  if (e.target.value.startsWith('/')) {
+                    setShowCommandPalette(true);
+                  } else {
+                    setShowCommandPalette(false);
+                  }
+                }}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && localInput.trim() && !isStreaming) {
+                    const query = localInput.trim();
+                    setLocalInput('');
+                    setShowCommandPalette(false);
+                    onSendMessage(query);
+                  }
+                }}
+                className="w-full bg-transparent border-none text-white/90 text-sm sm:text-base outline-none placeholder:text-white/30"
+              />
+            </div>
+
+            {/* Bottom Action Footer with Command Suggestions */}
+            <div className="px-4 py-2.5 border-t border-white/[0.05] flex items-center justify-between gap-3 bg-white/[0.01]">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCommandPalette(prev => !prev)}
+                  title="Open Action Commands"
+                  className={cn(
+                    "p-1.5 text-white/40 hover:text-emerald-400 rounded-lg transition-colors flex items-center gap-1.5 text-xs",
+                    showCommandPalette && "bg-emerald-500/15 text-emerald-400"
+                  )}
+                >
+                  <Command className="w-4 h-4" />
+                  <span className="hidden sm:inline">Commands</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (localInput.trim() && !isStreaming) {
+                      const query = localInput.trim();
+                      setLocalInput('');
+                      setShowCommandPalette(false);
+                      onSendMessage(query);
+                    }
+                  }}
+                  disabled={!localInput.trim() || isStreaming}
+                  className={cn(
+                    "px-4 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5",
+                    localInput.trim() && !isStreaming
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-lg shadow-emerald-500/25 hover:scale-105 active:scale-95"
+                      : "bg-white/[0.05] text-white/30 cursor-not-allowed"
+                  )}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Quick Command Chips */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+            {commandSuggestions.map((suggestion) => (
+              <button
+                key={suggestion.prefix}
+                onClick={() => setLocalInput(suggestion.prefix)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.02] hover:bg-emerald-500/10 border border-white/[0.05] hover:border-emerald-500/30 rounded-lg text-xs text-white/60 hover:text-emerald-300 transition-all"
+              >
+                {suggestion.icon}
+                <span>{suggestion.label}</span>
+              </button>
+            ))}
           </div>
-        </div>
+        </footer>
       </div>
     );
   }
