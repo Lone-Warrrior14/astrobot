@@ -1032,46 +1032,18 @@ export default function App() {
       <div className="workspace-wrapper">
         {/* Top Floating Pill Navigation Dock */}
         <header className="top-nav-dock">
-          {/* Left Nav Pill Group */}
-          <div className="nav-pills-bar">
+          {/* Left Controls (Restore Rail when collapsed) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {!isRailExpanded && (
               <button 
-                className="nav-pill-btn"
+                className="top-control-btn"
                 onClick={() => setIsRailExpanded(true)}
                 title="Expand Navigation Rail"
-                style={{ padding: '6px 10px', color: '#22c55e' }}
+                style={{ color: '#22c55e' }}
               >
-                <PanelLeftOpen size={14} />
+                <PanelLeftOpen size={16} />
               </button>
             )}
-
-            <button 
-              className={`nav-pill-btn ${activeTab === 'hardware' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
-            >
-              <LayoutDashboard size={14} /> Dashboard
-            </button>
-
-            <button 
-              className={`nav-pill-btn ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chat')}
-            >
-              <MessageSquare size={14} /> AI Chat
-            </button>
-
-            <button 
-              className={`nav-pill-btn ${activeTab === 'documents' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
-            >
-              <Database size={14} /> Files ({documents.length})
-            </button>
-
-            <button 
-              className={`nav-pill-btn ${activeTab === 'memories' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('memories'); fetchMemories(); }}
-            >
-              <Brain size={14} /> Memories ({memories.length})
-            </button>
           </div>
 
           {/* Right Controls Dock */}
@@ -1748,7 +1720,7 @@ export default function App() {
             <aside className={`history-sidebar-card ${isHistoryExpanded ? '' : 'collapsed'}`}>
               <div className="history-header-row">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button 
+                  <button
                     className="icon-tool-btn"
                     onClick={() => setIsHistoryExpanded(prev => !prev)}
                     title={isHistoryExpanded ? "Collapse History" : "Expand History"}
@@ -1764,8 +1736,8 @@ export default function App() {
                 </button>
               </div>
 
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="history-search-input"
                 placeholder="Search conversations..."
                 value={historySearchQuery}
