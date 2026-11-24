@@ -50,7 +50,7 @@ export default function App() {
   const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
   const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
 
-  // Collapsible Sidebars for Navigation and History
+  // Collapsible Sidebars State
   const [isRailExpanded, setIsRailExpanded] = useState(true);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
 
@@ -948,8 +948,8 @@ export default function App() {
 
           <button 
             className="rail-btn"
-            onClick={() => setIsRailExpanded(prev => !prev)}
-            title={isRailExpanded ? "Collapse Nav Rail" : "Expand Nav Rail"}
+            onClick={() => setIsRailExpanded(false)}
+            title="Collapse Nav Rail"
             style={{ marginBottom: '8px' }}
           >
             <PanelLeftClose size={16} />
