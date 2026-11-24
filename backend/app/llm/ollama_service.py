@@ -439,11 +439,11 @@ class OllamaService:
                     )
 
                     if any(w in normalized_query.lower() for w in ["news", "headline", "headlines", "todat", "today", "breaking"]):
-                        search_query_expanded = f"top breaking world news headlines {current_month} {current_year}"
+                        search_query_expanded = "top breaking world news headlines today"
                     elif is_recency_query:
-                        # Append the current month and year to ensure search engines retrieve the latest up-to-date state
+                        # Strip artificial future year appends if already present, and use clean recency query
                         clean_base = re.sub(rf'\b({current_year}|{current_month})\b', '', normalized_query, flags=re.IGNORECASE).strip()
-                        search_query_expanded = f"{clean_base} {current_month} {current_year}".strip()
+                        search_query_expanded = f"{clean_base} current latest".strip()
                     else:
                         search_query_expanded = normalized_query
 

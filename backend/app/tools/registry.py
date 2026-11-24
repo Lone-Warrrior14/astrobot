@@ -113,22 +113,68 @@ class ToolRegistry:
             if not query:
                 return {"error": "Empty query", "status": "error"}
 
+            def _clean_and_filter_results(items: list, limit: int = 5) -> list:
+                """Clean, deduplicate, and filter low-quality/spoofed/clickbait search items."""
+                cleaned = []
+                seen_urls = set()
+                noise_patterns = [
+                    r'this content isn\'t available',
+                    r'skip video',
+                    r'sign in to continue',
+                    r'enable javascript',
+                    r'captcha',
+                    r'are you a robot'
+                ]
+                for item in items:
+                    title = item.get("title", "").strip()
+                    url = item.get("url", "").strip()
+                    content = item.get("content", item.get("snippet", item.get("description", ""))).strip()
+                    
+                    if not title or not url or url in seen_urls:
+                        continue
+                    
+                    # Skip empty or error content
+                    if any(re.search(pat, content, re.IGNORECASE) for pat in noise_patterns):
+                        continue
+
+                    # Demote or skip broken redirect URLs if real ones exist
+                    if "google.com/goto?" in url and "url=" in url:
+                        # Extract real target URL from Google redirect if possible
+                        m = re.search(r'[?&]url=([^&]+)', url)
+                        if m:
+                            import urllib.parse
+                            url = urllib.parse.unquote(m.group(1))
+
+                    seen_urls.add(url)
+                    cleaned.append({
+                        "title": title,
+                        "url": url,
+                        "content": content
+                    })
+                    if len(cleaned) >= limit:
+                        break
+                return cleaned
+
             # ── 1. PRIMARY: OpenSERP with Real Browser Rendering (localhost:7000) ──
             try:
                 async with httpx.AsyncClient(timeout=8.0) as client:
                     open_res = await client.get(f"http://localhost:7000/google/search", params={"text": query})
                     if open_res.status_code == 200:
                         open_data = open_res.json()
-                        raw_items = open_data.get("results", [])[:5]
-                        if raw_items:
-                            results = [
-                                {
-                                    "title": item.get("title", ""),
-                                    "url": item.get("url", ""),
-                                    "content": item.get("description", item.get("snippet", ""))
-                                }
-                                for item in raw_items
-                            ]
+                        raw_items = open_data.get("results", [])
+                        
+                        # Also harvest direct ai_summary or featured snippets from serp_features if present
+                        features = open_data.get("serp_features", [])
+                        for feat in features:
+                            if feat.get("text") and feat.get("type") in ["ai_summary", "featured_snippet"]:
+                                raw_items.insert(0, {
+                                    "title": f"Google Featured Answer: {feat.get('title', 'Direct Fact')}",
+                                    "url": "https://google.com/search",
+                                    "description": feat.get("text", "")[:450]
+                                })
+
+                        results = _clean_and_filter_results(raw_items, limit=5)
+                        if results:
                             return {"results": results, "status": "success", "engine": "OpenSERP"}
             except Exception as e:
                 # OpenSERP fallback
@@ -141,12 +187,10 @@ class ToolRegistry:
                     res = await client.get(f"{settings.SEARXNG_URL}/search", params=params)
                     if res.status_code == 200:
                         data = res.json()
-                        raw_results = data.get("results", [])[:4]
-                        results = [
-                            {"title": r.get("title"), "url": r.get("url"), "content": r.get("content")}
-                            for r in raw_results
-                        ]
-                        return {"results": results, "status": "success", "engine": "SearXNG"}
+                        raw_results = data.get("results", [])
+                        results = _clean_and_filter_results(raw_results, limit=5)
+                        if results:
+                            return {"results": results, "status": "success", "engine": "SearXNG"}
             except Exception:
                 pass
 
@@ -154,13 +198,15 @@ class ToolRegistry:
             try:
                 from duckduckgo_search import DDGS
                 with DDGS() as ddgs:
-                    ddg_items = list(ddgs.text(query, max_results=4))
+                    ddg_items = list(ddgs.text(query, max_results=6))
                     if ddg_items:
-                        results = [
+                        raw_results = [
                             {"title": r.get("title"), "url": r.get("href"), "content": r.get("body")}
                             for r in ddg_items
                         ]
-                        return {"results": results, "status": "success", "engine": "DuckDuckGo"}
+                        results = _clean_and_filter_results(raw_results, limit=5)
+                        if results:
+                            return {"results": results, "status": "success", "engine": "DuckDuckGo"}
             except Exception as ddg_err:
                 return {"error": f"All search providers unavailable: {str(ddg_err)}", "status": "error"}
 
