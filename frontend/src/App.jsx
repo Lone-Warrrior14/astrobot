@@ -6,7 +6,7 @@ import {
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
   Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX,
   Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight,
-  ArrowDown, Edit2, RotateCw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, PanelsTopLeft
+  ArrowDown, Edit2, RotateCw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen
 } from 'lucide-react';
 import AstraCompanion, { speakAstra, cleanForSpeech } from './AstraCompanion';
 
@@ -50,7 +50,7 @@ export default function App() {
   const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
   const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
 
-  // Collapsible Sidebars for Liquid Glass Navigation and History
+  // Collapsible Sidebars for Navigation and History
   const [isRailExpanded, setIsRailExpanded] = useState(true);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
 
