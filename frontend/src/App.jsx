@@ -1030,69 +1030,6 @@ export default function App() {
 
       {/* Central Workspace Wrapper */}
       <div className="workspace-wrapper">
-        {/* Top Header Dock */}
-        <header className="top-nav-dock">
-          {/* Left Controls (Restore Rail when collapsed) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {!isRailExpanded && (
-              <button
-                className="top-control-btn"
-                onClick={() => setIsRailExpanded(true)}
-                title="Expand Navigation Rail"
-                style={{ color: '#22c55e' }}
-              >
-                <PanelLeftOpen size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* Right Controls Dock */}
-          <div className="top-controls-dock">
-            <button
-              className="top-control-btn"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={`Switch Theme (${theme})`}
-            >
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-
-            <button
-              className="top-control-btn"
-              onClick={() => handleExportChat('markdown')}
-              title="Export Chat to Markdown"
-            >
-              <Download size={15} />
-            </button>
-
-            <button
-              className="top-control-btn"
-              onClick={() => {
-                const next = !isSpeechBackEnabled;
-                setIsSpeechBackEnabled(next);
-                if (!next && window.speechSynthesis) {
-                  window.speechSynthesis.cancel();
-                  setCurrentlySpeakingMsgId(null);
-                }
-              }}
-              style={{ color: isSpeechBackEnabled ? '#22c55e' : undefined }}
-              title={isSpeechBackEnabled ? "Speech Back ON: Assistant will speak responses" : "Enable Speech Back (Astra Voice)"}
-            >
-              {isSpeechBackEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            </button>
-
-            <div
-              className="avatar-badge-btn"
-              onClick={() => {
-                setIsAstraActive(true);
-                setIsAstraOnly(true);
-              }}
-              title="Astra Companion Fullscreen"
-            >
-              <img src="/logo.png" alt="Astra" />
-            </div>
-          </div>
-        </header>
-
         {/* Chat Workspace Stage */}
         {activeTab === 'chat' && (
           <div className="chat-workspace-stage">
@@ -1101,6 +1038,17 @@ export default function App() {
               {/* Chat Top Banner with Model Select & Modes */}
               <div className="chat-window-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {!isRailExpanded && (
+                    <button
+                      className="icon-tool-btn"
+                      onClick={() => setIsRailExpanded(true)}
+                      title="Expand Navigation Rail"
+                      style={{ color: '#22c55e', marginRight: '2px' }}
+                    >
+                      <PanelLeftOpen size={16} />
+                    </button>
+                  )}
+
                   <div className="model-badge-pill" title="Local Model Engine">
                     <div className="active-pulse-dot" />
                     <select
@@ -1142,6 +1090,39 @@ export default function App() {
                   >
                     <Lightbulb size={15} color={showThinking ? "#22c55e" : undefined} />
                   </button>
+
+                  <button
+                    className="icon-tool-btn"
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    title={`Switch Theme (${theme})`}
+                  >
+                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                  </button>
+
+                  <button
+                    className="icon-tool-btn"
+                    onClick={() => handleExportChat('markdown')}
+                    title="Export Chat to Markdown"
+                  >
+                    <Download size={15} />
+                  </button>
+
+                  <button
+                    className="icon-tool-btn"
+                    onClick={() => {
+                      const next = !isSpeechBackEnabled;
+                      setIsSpeechBackEnabled(next);
+                      if (!next && window.speechSynthesis) {
+                        window.speechSynthesis.cancel();
+                        setCurrentlySpeakingMsgId(null);
+                      }
+                    }}
+                    style={{ color: isSpeechBackEnabled ? '#22c55e' : undefined }}
+                    title={isSpeechBackEnabled ? "Speech Back ON: Assistant will speak responses" : "Enable Speech Back (Astra Voice)"}
+                  >
+                    {isSpeechBackEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+                  </button>
+
                   <button
                     className="icon-tool-btn"
                     onClick={startNewChat}
@@ -1149,6 +1130,18 @@ export default function App() {
                   >
                     <Plus size={15} />
                   </button>
+
+                  <div
+                    className="avatar-badge-btn"
+                    onClick={() => {
+                      setIsAstraActive(true);
+                      setIsAstraOnly(true);
+                    }}
+                    title="Astra Companion Fullscreen"
+                    style={{ marginLeft: '4px' }}
+                  >
+                    <img src="/logo.png" alt="Astra" />
+                  </div>
                 </div>
               </div>
 
