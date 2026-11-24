@@ -110,6 +110,16 @@ body {
   padding: 16px 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rail-sidebar.collapsed {
+  width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  border: none;
 }
 
 .rail-top {
@@ -753,6 +763,41 @@ body {
   gap: 14px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
   flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.history-sidebar-card.collapsed {
+  width: 60px;
+  padding: 14px 6px;
+  align-items: center;
+}
+
+.history-sidebar-card.collapsed .history-title,
+.history-sidebar-card.collapsed .new-chat-pill-btn span,
+.history-sidebar-card.collapsed .history-search-input,
+.history-sidebar-card.collapsed .history-group-label,
+.history-sidebar-card.collapsed .history-item-title,
+.history-sidebar-card.collapsed .history-item-pill button {
+  display: none !important;
+}
+
+.history-sidebar-card.collapsed .history-header-row {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-sidebar-card.collapsed .new-chat-pill-btn {
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.history-sidebar-card.collapsed .history-item-pill {
+  justify-content: center;
+  padding: 10px 0;
+  width: 42px;
 }
 
 .history-header-row {

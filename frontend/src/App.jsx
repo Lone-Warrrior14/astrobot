@@ -6,7 +6,7 @@ import {
   MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
   Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX,
   Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight,
-  ArrowDown, Edit2, RotateCw
+  ArrowDown, Edit2, RotateCw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, PanelsTopLeft
 } from 'lucide-react';
 import AstraCompanion, { speakAstra, cleanForSpeech } from './AstraCompanion';
 
@@ -49,6 +49,10 @@ export default function App() {
   // Auto Speech Back (TTS) State using Astra's Voice
   const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
   const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
+
+  // Collapsible Sidebars for Liquid Glass Navigation and History
+  const [isRailExpanded, setIsRailExpanded] = useState(true);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
 
   // History search filter query
   const [historySearchQuery, setHistorySearchQuery] = useState('');
@@ -932,7 +936,7 @@ export default function App() {
       />
 
       {/* Left Rail Icon Bar */}
-      <aside className="rail-sidebar">
+      <aside className={`rail-sidebar ${isRailExpanded ? '' : 'collapsed'}`}>
         <div className="rail-top">
           <div 
             className="rail-brand-logo" 
@@ -941,6 +945,15 @@ export default function App() {
           >
             <img src="/logo.png" alt="Astra Logo" />
           </div>
+
+          <button 
+            className="rail-btn"
+            onClick={() => setIsRailExpanded(prev => !prev)}
+            title={isRailExpanded ? "Collapse Nav Rail" : "Expand Nav Rail"}
+            style={{ marginBottom: '8px' }}
+          >
+            <PanelLeftClose size={16} />
+          </button>
 
           <div className="rail-nav-items">
             <button 
@@ -1021,6 +1034,17 @@ export default function App() {
         <header className="top-nav-dock">
           {/* Left Nav Pill Group */}
           <div className="nav-pills-bar">
+            {!isRailExpanded && (
+              <button 
+                className="nav-pill-btn"
+                onClick={() => setIsRailExpanded(true)}
+                title="Expand Navigation Rail"
+                style={{ padding: '6px 10px', color: '#22c55e' }}
+              >
+                <PanelLeftOpen size={14} />
+              </button>
+            )}
+
             <button 
               className={`nav-pill-btn ${activeTab === 'hardware' ? 'active' : ''}`}
               onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
@@ -1721,12 +1745,22 @@ export default function App() {
             </div>
 
             {/* Right History Chat Card */}
-            <aside className="history-sidebar-card">
+            <aside className={`history-sidebar-card ${isHistoryExpanded ? '' : 'collapsed'}`}>
               <div className="history-header-row">
-                <h3 className="history-title">History Chat</h3>
-                <button className="new-chat-pill-btn" onClick={startNewChat}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button 
+                    className="icon-tool-btn"
+                    onClick={() => setIsHistoryExpanded(prev => !prev)}
+                    title={isHistoryExpanded ? "Collapse History" : "Expand History"}
+                    style={{ padding: '4px' }}
+                  >
+                    {isHistoryExpanded ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+                  </button>
+                  {isHistoryExpanded && <h3 className="history-title">History Chat</h3>}
+                </div>
+                <button className="new-chat-pill-btn" onClick={startNewChat} title="Start New Chat">
                   <Plus size={13} />
-                  <span>New Chat</span>
+                  {isHistoryExpanded && <span>New Chat</span>}
                 </button>
               </div>
 
