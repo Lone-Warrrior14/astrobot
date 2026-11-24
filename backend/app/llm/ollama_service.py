@@ -525,18 +525,12 @@ class OllamaService:
                             "content": (
                                 f"{engine_name} LIVE SEARCH RESULTS (Retrieved on {current_time_str}, today's date: {current_month} {current_year}):\n\n"
                                 f"{results_text}\n\n"
-                                f"CRITICAL DIRECTIVES FOR RECENCY & ACCURACY:\n"
-                                f"1. The user asked: '{last_user_msg}'. Directly answer their question first and foremost in your very first sentence.\n"
-                                f"2. TEMPORAL ACCURACY REQUIREMENT:\n"
-                                f"   - The current time is {current_month} {current_year}. You MUST evaluate information strictly chronologically.\n"
-                                f"   - The latest/most recent date or event in the results represents the truth today (e.g. events or title changes occurring later in {current_year} like October/November supersede earlier reigns from January or prior years).\n"
-                                f"   - If the user asks whether a specific person currently holds a title or position (e.g. 'is X current champion?'):\n"
-                                f"     * If they do NOT hold it as of the most recent results, explicitly begin with:\n"
-                                f"       'No, [Name] is not the current [title]. The current [title] is [Current Person].' (e.g. for Undisputed WWE Champion, Sami Zayn).\n"
-                                f"     * Be careful not to confuse different titles (e.g. Undisputed WWE Champion is Sami Zayn, while World Heavyweight Champion is Roman Reigns).\n"
-                                f"3. Citations & Formatting:\n"
-                                f"   - Do NOT paste raw, long URL strings in the text body (sources are cited automatically in the UI footer).\n"
-                                f"   - Deliver a direct, fact-focused, and unambiguous answer."
+                                f"CRITICAL DIRECTIVES FOR SEARCH GROUNDING & RECENCY:\n"
+                                f"1. STRICT FACTUAL GROUNDING: Your entire answer MUST be derived EXCLUSIVELY and DIRECTLY from the live search results above. Do NOT use outdated internal pre-trained memory or invent fictional events.\n"
+                                f"2. OVERRIDE INTERNAL BIAS: When the search results contradict your pre-trained weights (e.g. current sports champions, political office holders, breaking news), the search results ALWAYS win.\n"
+                                f"3. ACCURATE READING OF WINNERS & MATCH RESULTS: Pay close attention to match outcomes in snippets. If article mentions 'Cody Rhodes def. Logan Paul', that means Cody won and retained, NOT Logan Paul.\n"
+                                f"4. DIRECT ANSWER: Address '{last_user_msg}' clearly and directly in your first sentence based only on verified facts in the snippets above.\n"
+                                f"5. Clean Citations: Do NOT paste raw, long Google redirect URLs in your text. Sources are displayed cleanly in the UI."
                             )
                         })
                         sources.extend([{"filename": f"Web: {r['title']}", "score": 1.0, "url": r['url']} for r in results_list[:6]])
