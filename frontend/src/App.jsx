@@ -50,9 +50,9 @@ export default function App() {
   const [isSpeechBackEnabled, setIsSpeechBackEnabled] = useState(false);
   const [currentlySpeakingMsgId, setCurrentlySpeakingMsgId] = useState(null);
 
-  // Collapsible Sidebars State
-  const [isRailExpanded, setIsRailExpanded] = useState(true);
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
+  // Collapsible Sidebars State (auto-collapsed on mobile by default)
+  const [isRailExpanded, setIsRailExpanded] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 1024 : true);
 
   // History search filter query
   const [historySearchQuery, setHistorySearchQuery] = useState('');
@@ -1129,6 +1129,14 @@ export default function App() {
                     title="Clear & New Chat"
                   >
                     <Plus size={15} />
+                  </button>
+
+                  <button
+                    className="icon-tool-btn mobile-history-btn"
+                    onClick={() => setIsHistoryExpanded(prev => !prev)}
+                    title={isHistoryExpanded ? "Close History" : "Open History"}
+                  >
+                    <MessageSquare size={15} color={isHistoryExpanded ? "#22c55e" : undefined} />
                   </button>
 
                   <div

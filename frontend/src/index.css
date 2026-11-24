@@ -1293,3 +1293,146 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* ==========================================================
+   MOBILE & TABLET RESPONSIVE BREAKPOINTS
+   ========================================================== */
+
+/* Mobile history trigger button - hidden on desktop */
+.mobile-history-btn {
+  display: none !important;
+}
+
+@media (max-width: 1024px) {
+  .mobile-history-btn {
+    display: inline-flex !important;
+  }
+
+  .history-sidebar-card {
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    bottom: 10px;
+    z-index: 50;
+    max-width: 320px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  }
+
+  .history-sidebar-card.collapsed {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 6px;
+    gap: 6px;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  /* Left navigation rail floats or folds */
+  .rail-sidebar {
+    position: fixed;
+    left: 6px;
+    top: 6px;
+    bottom: 6px;
+    z-index: 50;
+    width: 62px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  }
+
+  .rail-sidebar.collapsed {
+    width: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Header adjustments */
+  .chat-window-header {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chat-window-header > div:first-child {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .model-select-dropdown {
+    max-width: 130px;
+    font-size: 12px;
+  }
+
+  .pill-tool-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  /* Input bar dock margins */
+  .input-dock-container {
+    padding: 8px 10px;
+  }
+
+  .input-glass-card {
+    padding: 10px 14px;
+    border-radius: 16px;
+    gap: 8px;
+  }
+
+  .input-glass-card textarea {
+    font-size: 14px;
+    max-height: 120px;
+  }
+
+  .input-bottom-actions-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .input-left-buttons {
+    gap: 6px;
+  }
+
+  .input-left-buttons .pill-tool-btn span {
+    display: none;
+  }
+
+  .hero-starters-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .hero-greeting-title {
+    font-size: 20px;
+  }
+
+  .chat-messages {
+    padding: 12px 14px;
+  }
+
+  .message-bubble {
+    max-width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .chat-window-card {
+    border-radius: 0;
+    border: none;
+  }
+
+  .avatar-badge-btn {
+    width: 28px;
+    height: 28px;
+  }
+}
+
