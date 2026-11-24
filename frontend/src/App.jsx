@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import { 
-  MessageSquare, Plus, Trash2, Database, Brain, HardDrive, 
+import {
+  MessageSquare, Plus, Trash2, Database, Brain, HardDrive,
   Settings, Send, StopCircle, RefreshCw, Paperclip, ChevronRight, Moon, Sun, Globe, Search, Image as ImageIcon, Sparkles, Download, X, Loader2, EyeOff, ShieldCheck, FileText, Cpu, Video, Check, Copy, ExternalLink, Info, Mic, MicOff, Volume2, VolumeX,
   Compass, LayoutDashboard, HelpCircle, User, Bell, MoreVertical, Flame, Lightbulb, MonitorCheck, Scale, Grid, Shuffle, ArrowRight,
   ArrowDown, Edit2, RotateCw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen
@@ -63,8 +63,8 @@ export default function App() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const oneDay = 24 * 60 * 60 * 1000;
 
-    const filtered = conversations.filter(c => 
-      !historySearchQuery.trim() || 
+    const filtered = conversations.filter(c =>
+      !historySearchQuery.trim() ||
       (c.title && c.title.toLowerCase().includes(historySearchQuery.toLowerCase()))
     );
 
@@ -213,7 +213,7 @@ export default function App() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, []);
@@ -237,7 +237,7 @@ export default function App() {
         try {
           recognitionRef.current?.stop();
           setTimeout(() => recognitionRef.current?.start(), 150);
-        } catch (e) {}
+        } catch (e) { }
       }
     }
   };
@@ -538,7 +538,7 @@ export default function App() {
                 setResearchState(null);
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, sources } : m));
               }
-            } catch (err) {}
+            } catch (err) { }
           }
         }
       }
@@ -688,7 +688,7 @@ export default function App() {
                   setIsAstraThinking(false);
                 }
               }
-            } catch (err) {}
+            } catch (err) { }
           }
         }
       }
@@ -698,7 +698,7 @@ export default function App() {
 
       // Keep messages synced in conversation history
       setMessages(prev => [
-        ...prev, 
+        ...prev,
         { id: Date.now().toString(), role: 'user', content: userText },
         { id: (Date.now() + 1).toString(), role: 'assistant', content: cleanReply }
       ]);
@@ -790,7 +790,7 @@ export default function App() {
               if (data.sources) {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, sources: data.sources } : m));
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
       }
@@ -823,10 +823,10 @@ export default function App() {
     setIsVisionAnalyzing(true);
     setUploadProgress({ name: file.name, stage: 'Uploading image to Ollama Vision pipeline' });
 
-    const userMsg = { 
-      id: Date.now().toString(), 
-      role: 'user', 
-      content: `🖼️ **Uploaded image for analysis:** *${file.name}*\n\n${finalPrompt}` 
+    const userMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `🖼️ **Uploaded image for analysis:** *${file.name}*\n\n${finalPrompt}`
     };
     setMessages(prev => [...prev, userMsg]);
 
@@ -926,27 +926,27 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Dynamic Mouse Moving Ambient Flash / Glow */}
-      <div 
-        className="ambient-mouse-glow" 
-        style={{ 
-          left: `${mousePos.x}px`, 
+      <div
+        className="ambient-mouse-glow"
+        style={{
+          left: `${mousePos.x}px`,
           top: `${mousePos.y}px`,
           opacity: mousePos.x > 0 ? (theme === 'dark' ? 1 : 0.6) : 0
-        }} 
+        }}
       />
 
       {/* Left Rail Icon Bar */}
       <aside className={`rail-sidebar ${isRailExpanded ? '' : 'collapsed'}`}>
         <div className="rail-top">
-          <div 
-            className="rail-brand-logo" 
-            onClick={startNewChat} 
+          <div
+            className="rail-brand-logo"
+            onClick={startNewChat}
             title="Astra Talk - Start New Chat"
           >
             <img src="/logo.png" alt="Astra Logo" />
           </div>
 
-          <button 
+          <button
             className="rail-btn"
             onClick={() => setIsRailExpanded(false)}
             title="Collapse Nav Rail"
@@ -956,7 +956,7 @@ export default function App() {
           </button>
 
           <div className="rail-nav-items">
-            <button 
+            <button
               className={`rail-btn ${activeTab === 'chat' ? 'active' : ''}`}
               onClick={() => setActiveTab('chat')}
               title="AI Chat"
@@ -964,7 +964,7 @@ export default function App() {
               <MessageSquare size={18} />
             </button>
 
-            <button 
+            <button
               className={`rail-btn ${activeTab === 'image_gen' ? 'active' : ''}`}
               onClick={() => setActiveTab('image_gen')}
               title="SDXL Image Studio"
@@ -972,7 +972,7 @@ export default function App() {
               <Sparkles size={18} />
             </button>
 
-            <button 
+            <button
               className={`rail-btn ${activeTab === 'documents' ? 'active' : ''}`}
               onClick={() => { setActiveTab('documents'); fetchDocuments(activeConvId); }}
               title="Isolated Documents"
@@ -980,7 +980,7 @@ export default function App() {
               <Database size={18} />
             </button>
 
-            <button 
+            <button
               className={`rail-btn ${activeTab === 'memories' ? 'active' : ''}`}
               onClick={() => { setActiveTab('memories'); fetchMemories(); }}
               title="Long-Term Memory"
@@ -988,7 +988,7 @@ export default function App() {
               <Brain size={18} />
             </button>
 
-            <button 
+            <button
               className={`rail-btn ${activeTab === 'hardware' ? 'active' : ''}`}
               onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
               title="System Diagnostics & SearXNG"
@@ -996,7 +996,7 @@ export default function App() {
               <HardDrive size={18} />
             </button>
 
-            <button 
+            <button
               className={`rail-btn ${isAstraActive ? 'active' : ''}`}
               onClick={() => {
                 setIsAstraActive(prev => !prev);
@@ -1011,15 +1011,15 @@ export default function App() {
         </div>
 
         <div className="rail-bottom">
-          <button 
-            className="rail-btn" 
+          <button
+            className="rail-btn"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <button 
-            className="rail-btn" 
+          <button
+            className="rail-btn"
             title="Settings & Hardware"
             onClick={() => { setActiveTab('hardware'); fetchHardware(); }}
           >
@@ -1030,12 +1030,12 @@ export default function App() {
 
       {/* Central Workspace Wrapper */}
       <div className="workspace-wrapper">
-        {/* Top Floating Pill Navigation Dock */}
+        {/* Top Header Dock */}
         <header className="top-nav-dock">
           {/* Left Controls (Restore Rail when collapsed) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {!isRailExpanded && (
-              <button 
+              <button
                 className="top-control-btn"
                 onClick={() => setIsRailExpanded(true)}
                 title="Expand Navigation Rail"
@@ -1048,7 +1048,7 @@ export default function App() {
 
           {/* Right Controls Dock */}
           <div className="top-controls-dock">
-            <button 
+            <button
               className="top-control-btn"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Switch Theme (${theme})`}
@@ -1056,7 +1056,7 @@ export default function App() {
               {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
-            <button 
+            <button
               className="top-control-btn"
               onClick={() => handleExportChat('markdown')}
               title="Export Chat to Markdown"
@@ -1064,7 +1064,7 @@ export default function App() {
               <Download size={15} />
             </button>
 
-            <button 
+            <button
               className="top-control-btn"
               onClick={() => {
                 const next = !isSpeechBackEnabled;
@@ -1080,8 +1080,8 @@ export default function App() {
               {isSpeechBackEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
 
-            <div 
-              className="avatar-badge-btn" 
+            <div
+              className="avatar-badge-btn"
               onClick={() => {
                 setIsAstraActive(true);
                 setIsAstraOnly(true);
@@ -1103,7 +1103,7 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div className="model-badge-pill" title="Local Model Engine">
                     <div className="active-pulse-dot" />
-                    <select 
+                    <select
                       className="model-select-dropdown"
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
@@ -1114,7 +1114,7 @@ export default function App() {
                     </select>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => setIsRagOnly(prev => !prev)}
                     className={`pill-tool-btn ${isRagOnly ? 'active' : ''}`}
                     title={isRagOnly ? "Strict RAG Grounding Enabled" : "Enable RAG Only Mode"}
@@ -1123,7 +1123,7 @@ export default function App() {
                     <span>{isRagOnly ? "RAG Grounded" : "RAG Off"}</span>
                   </button>
 
-                  <button 
+                  <button
                     onClick={toggleIncognito}
                     className={`pill-tool-btn ${isIncognito ? 'active' : ''}`}
                     style={isIncognito ? { color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.4)', background: 'rgba(168, 85, 247, 0.15)' } : {}}
@@ -1135,15 +1135,15 @@ export default function App() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button 
-                    className="icon-tool-btn" 
+                  <button
+                    className="icon-tool-btn"
                     onClick={() => setShowThinking(prev => !prev)}
                     title={showThinking ? "Hide Deep Thinking Process" : "Show Deep Thinking Process"}
                   >
                     <Lightbulb size={15} color={showThinking ? "#22c55e" : undefined} />
                   </button>
-                  <button 
-                    className="icon-tool-btn" 
+                  <button
+                    className="icon-tool-btn"
                     onClick={startNewChat}
                     title="Clear & New Chat"
                   >
@@ -1166,13 +1166,13 @@ export default function App() {
                       {isIncognito ? "Private Incognito Studio" : "Good Day! How can Astra assist you?"}
                     </h2>
                     <p className="hero-greeting-sub">
-                      {isIncognito 
+                      {isIncognito
                         ? "Zero database saves or vector trace. Everything stays strictly in temporary memory."
                         : "Type your query, upload files for isolated RAG, or let Astra perform live web research."}
                     </p>
 
                     <div className="hero-starters-grid">
-                      <div 
+                      <div
                         className="starter-card-btn"
                         onClick={() => setInput("research current WWE champion")}
                       >
@@ -1183,7 +1183,7 @@ export default function App() {
                         <div className="starter-card-desc">SearXNG multi-source search with real-time citations</div>
                       </div>
 
-                      <div 
+                      <div
                         className="starter-card-btn"
                         onClick={() => setInput("create a image of futuristic neon cyberpunk city in rain")}
                       >
@@ -1194,7 +1194,7 @@ export default function App() {
                         <div className="starter-card-desc">SDXL / Realistic Vision v6 locally on RTX 3050</div>
                       </div>
 
-                      <div 
+                      <div
                         className="starter-card-btn"
                         onClick={() => fileInputRef.current?.click()}
                       >
@@ -1205,7 +1205,7 @@ export default function App() {
                         <div className="starter-card-desc">Upload PDF, DOCX or TXT with zero cross-chat leakage</div>
                       </div>
 
-                      <div 
+                      <div
                         className="starter-card-btn"
                         onClick={() => {
                           setIsAstraActive(true);
@@ -1227,10 +1227,10 @@ export default function App() {
                         {m.role === 'user' ? (
                           'U'
                         ) : (
-                          <img 
-                            src="/logo.png" 
-                            alt="Astra Talk" 
-                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                          <img
+                            src="/logo.png"
+                            alt="Astra Talk"
+                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                           />
                         )}
                       </div>
@@ -1246,13 +1246,13 @@ export default function App() {
                               autoFocus
                             />
                             <div className="user-edit-actions">
-                              <button 
+                              <button
                                 className="btn-edit-cancel"
                                 onClick={() => { setEditingMsgId(null); setEditingText(''); }}
                               >
                                 Cancel
                               </button>
-                              <button 
+                              <button
                                 className="btn-edit-save"
                                 onClick={() => handleSaveEditedMessage(idx)}
                               >
@@ -1268,17 +1268,17 @@ export default function App() {
                                 <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{m.thinking_content}</p>
                               </div>
                             )}
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
                               rehypePlugins={[rehypeHighlight]}
                               components={{
                                 a({ href, children, ...props }) {
                                   const isBareLongUrl = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://')) && children.length > 30;
                                   return (
-                                    <a 
-                                      href={href} 
-                                      target="_blank" 
-                                      rel="noreferrer" 
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noreferrer"
                                       className="chat-inline-link"
                                       {...props}
                                     >
@@ -1298,7 +1298,7 @@ export default function App() {
                                       <div className="code-block-container">
                                         <div className="code-block-header">
                                           <span className="code-lang-label">{match ? match[1] : 'code'}</span>
-                                          <button 
+                                          <button
                                             className="copy-code-btn"
                                             onClick={() => copyToClipboard(codeString, codeId)}
                                             title="Copy code"
@@ -1351,7 +1351,7 @@ export default function App() {
                         {/* Action Bar Beneath Assistant Bubble */}
                         {m.role === 'assistant' && m.content && (
                           <div className="message-action-bar">
-                            <button 
+                            <button
                               className="msg-action-btn"
                               onClick={() => copyToClipboard(m.content, `msg_${idx}`)}
                               title="Copy entire response"
@@ -1363,7 +1363,7 @@ export default function App() {
                               )}
                             </button>
 
-                            <button 
+                            <button
                               className="msg-action-btn"
                               onClick={() => handleSpeakText(m.content, m.id || `msg_${idx}`)}
                               title={currentlySpeakingMsgId === (m.id || `msg_${idx}`) ? "Stop speaking" : "Read aloud with Astra's voice"}
@@ -1392,8 +1392,8 @@ export default function App() {
                         {m.sources && m.sources.length > 0 && (
                           <div className="sources-tags">
                             {m.sources.map((s, si) => (
-                              <button 
-                                key={si} 
+                              <button
+                                key={si}
                                 className="source-tag clickable-source-tag"
                                 onClick={() => setActiveSourceDrawer(s)}
                                 title="Click to view reference passage"
@@ -1415,10 +1415,10 @@ export default function App() {
                 {uploadProgress && (
                   <div className="message-row">
                     <div className="avatar ai">
-                      <img 
-                        src="/logo.png" 
-                        alt="Astra Talk" 
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      <img
+                        src="/logo.png"
+                        alt="Astra Talk"
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       />
                     </div>
                     <div className="message-bubble" style={{ width: '100%' }}>
@@ -1441,10 +1441,10 @@ export default function App() {
                 {researchState && (
                   <div className="message-row">
                     <div className="avatar ai">
-                      <img 
-                        src="/logo.png" 
-                        alt="Astra Talk" 
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      <img
+                        src="/logo.png"
+                        alt="Astra Talk"
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       />
                     </div>
                     <div className="message-bubble">
@@ -1461,8 +1461,8 @@ export default function App() {
                             {researchState.type === 'youtube'
                               ? '📺 Extracting YouTube Transcript & Video...'
                               : researchState.type === 'url'
-                              ? '🌐 Fetching & Reading Web Page...'
-                              : '🔍 Researching Live Web & News...'}
+                                ? '🌐 Fetching & Reading Web Page...'
+                                : '🔍 Researching Live Web & News...'}
                           </div>
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                             {researchState.type === 'youtube' ? (
@@ -1482,10 +1482,10 @@ export default function App() {
                 {isGeneratingInChatImage && (
                   <div className="message-row">
                     <div className="avatar ai">
-                      <img 
-                        src="/logo.png" 
-                        alt="Astra Talk" 
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      <img
+                        src="/logo.png"
+                        alt="Astra Talk"
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       />
                     </div>
                     <div className="message-bubble">
@@ -1503,10 +1503,10 @@ export default function App() {
                 {isVisionAnalyzing && (
                   <div className="message-row">
                     <div className="avatar ai">
-                      <img 
-                        src="/logo.png" 
-                        alt="Astra Talk" 
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                      <img
+                        src="/logo.png"
+                        alt="Astra Talk"
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       />
                     </div>
                     <div className="message-bubble" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1517,7 +1517,7 @@ export default function App() {
                 )}
                 {/* Floating Scroll-to-Bottom Button */}
                 {showScrollBottom && (
-                  <button 
+                  <button
                     className="scroll-bottom-pill-btn"
                     onClick={() => scrollToBottom(true)}
                     title="Scroll to latest messages"
@@ -1538,8 +1538,8 @@ export default function App() {
                   <div className="pending-file-chip">
                     <Paperclip size={13} color="#22c55e" />
                     <span>RAG: <strong>{selectedFile.name}</strong></span>
-                    <button 
-                      onClick={() => setSelectedFile(null)} 
+                    <button
+                      onClick={() => setSelectedFile(null)}
                       style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
                     >
                       <X size={12} />
@@ -1553,8 +1553,8 @@ export default function App() {
                       <img src={imagePreviewUrl} alt="Preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
                     )}
                     <span>Vision: <strong>{selectedImage.name}</strong></span>
-                    <button 
-                      onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); }} 
+                    <button
+                      onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); }}
                       style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
                     >
                       <X size={12} />
@@ -1565,24 +1565,24 @@ export default function App() {
                 {/* Input Card Container */}
                 <div className="input-glass-card">
                   {/* Hidden File Inputs */}
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    accept=".pdf,.docx,.txt,.csv,.xlsx,.md" 
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    accept=".pdf,.docx,.txt,.csv,.xlsx,.md"
                     onChange={(e) => {
                       if (e.target.files[0]) {
                         setSelectedFile(e.target.files[0]);
                         setSelectedImage(null);
                         setImagePreviewUrl(null);
                       }
-                    }} 
+                    }}
                   />
-                  <input 
-                    type="file" 
-                    ref={imageInputRef} 
-                    style={{ display: 'none' }} 
-                    accept="image/*" 
+                  <input
+                    type="file"
+                    ref={imageInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/*"
                     onChange={(e) => {
                       const f = e.target.files[0];
                       if (f) {
@@ -1590,20 +1590,20 @@ export default function App() {
                         setSelectedFile(null);
                         setImagePreviewUrl(URL.createObjectURL(f));
                       }
-                    }} 
+                    }}
                   />
 
-                  <textarea 
+                  <textarea
                     rows={1}
                     placeholder={
                       isIncognito
                         ? `Incognito mode active… No trace saved to disk.`
                         : isRagOnly
                           ? `Strict RAG Mode… Ask questions grounded in uploaded documents.`
-                          : selectedFile 
-                            ? `Ask questions about ${selectedFile.name}...` 
-                            : selectedImage 
-                              ? `Ask anything about this image (or press Send)...` 
+                          : selectedFile
+                            ? `Ask questions about ${selectedFile.name}...`
+                            : selectedImage
+                              ? `Ask anything about this image (or press Send)...`
                               : `Start your request, or ask Astra anything...`
                     }
                     value={input}
@@ -1619,8 +1619,8 @@ export default function App() {
                   {/* Bottom Action Row with Pills and Emerald Send Button */}
                   <div className="input-bottom-actions-row">
                     <div className="input-left-buttons">
-                      <button 
-                        className="icon-tool-btn" 
+                      <button
+                        className="icon-tool-btn"
                         title="Attach Document for Isolated RAG"
                         onClick={() => fileInputRef.current?.click()}
                         type="button"
@@ -1628,8 +1628,8 @@ export default function App() {
                         <Paperclip size={15} />
                       </button>
 
-                      <button 
-                        className="icon-tool-btn" 
+                      <button
+                        className="icon-tool-btn"
                         title="Attach Image for Vision Analysis"
                         onClick={() => imageInputRef.current?.click()}
                         type="button"
@@ -1637,7 +1637,7 @@ export default function App() {
                         <ImageIcon size={15} />
                       </button>
 
-                      <button 
+                      <button
                         className={`pill-tool-btn ${showThinking ? 'active' : ''}`}
                         onClick={() => setShowThinking(prev => !prev)}
                         type="button"
@@ -1647,7 +1647,7 @@ export default function App() {
                         <span>Reasoning</span>
                       </button>
 
-                      <button 
+                      <button
                         className="pill-tool-btn"
                         onClick={() => {
                           if (!input.startsWith('research ')) {
@@ -1663,7 +1663,7 @@ export default function App() {
                     </div>
 
                     <div className="input-right-buttons">
-                      <button 
+                      <button
                         className={`voice-mic-btn ${isListening ? 'listening' : ''}`}
                         title={isListening ? "Listening... Click to stop" : "Voice Dictation (Web Speech API)"}
                         onClick={toggleSpeechRecognition}
@@ -1673,8 +1673,8 @@ export default function App() {
                       </button>
 
                       {isStreaming ? (
-                        <button 
-                          className="emerald-send-btn" 
+                        <button
+                          className="emerald-send-btn"
                           onClick={handleStopGeneration}
                           style={{ background: '#ef4444', color: '#fff' }}
                           title="Stop Generating"
@@ -1682,9 +1682,9 @@ export default function App() {
                           <StopCircle size={17} />
                         </button>
                       ) : (
-                        <button 
-                          className="emerald-send-btn" 
-                          onClick={handleSend} 
+                        <button
+                          className="emerald-send-btn"
+                          onClick={handleSend}
                           disabled={(!input.trim() && !selectedFile && !selectedImage) || isVisionAnalyzing}
                           title="Send Message"
                         >
@@ -1698,8 +1698,8 @@ export default function App() {
                 {speechError && (
                   <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>⚠️ {speechError}</span>
-                    <button 
-                      onClick={() => setSpeechError(null)} 
+                    <button
+                      onClick={() => setSpeechError(null)}
                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
                     >
                       ✕
@@ -1751,8 +1751,8 @@ export default function App() {
                       <div className="history-group-label">{groupTitle}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {convs.map(c => (
-                          <div 
-                            key={c.id} 
+                          <div
+                            key={c.id}
                             className={`history-item-pill ${c.id === activeConvId ? 'active' : ''}`}
                             onClick={() => { setActiveConvId(c.id); setActiveTab('chat'); }}
                           >
@@ -1760,7 +1760,7 @@ export default function App() {
                             <span className="history-item-title" title={c.title}>
                               {c.title}
                             </span>
-                            <button 
+                            <button
                               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '2px' }}
                               onClick={(e) => deleteConversation(e, c.id)}
                               title="Delete Conversation"
@@ -1795,7 +1795,7 @@ export default function App() {
               <label style={{ fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>
                 Prompt:
               </label>
-              <textarea 
+              <textarea
                 rows={3}
                 placeholder="e.g. Portrait of an astronaut standing on Mars, golden hour lighting, cinematic..."
                 value={imagePrompt}
@@ -1803,7 +1803,7 @@ export default function App() {
                 style={{ width: '100%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', outline: 'none', resize: 'vertical' }}
               />
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button 
+                <button
                   onClick={handleGenerateSDXL}
                   disabled={!imagePrompt.trim() || isGeneratingImage}
                   style={{
@@ -1833,18 +1833,18 @@ export default function App() {
               ) : (
                 generatedGallery.map((g, idx) => (
                   <div key={idx} className="panel-card" style={{ padding: '10px' }}>
-                    <img 
-                      src={g.image} 
-                      alt={g.prompt} 
-                      style={{ width: '100%', borderRadius: '8px', objectFit: 'cover', maxHeight: '340px' }} 
+                    <img
+                      src={g.image}
+                      alt={g.prompt}
+                      style={{ width: '100%', borderRadius: '8px', objectFit: 'cover', maxHeight: '340px' }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                         {g.prompt}
                       </span>
-                      <a 
-                        href={g.image} 
-                        download={g.filename || "sdxl_image.png"} 
+                      <a
+                        href={g.image}
+                        download={g.filename || "sdxl_image.png"}
                         style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center' }}
                         title="Download image"
                       >
@@ -1893,7 +1893,7 @@ export default function App() {
               User preferences and profile facts stored in Qdrant and recalled across conversations.
             </p>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <input 
+              <input
                 type="text"
                 placeholder="Add a new permanent user memory..."
                 value={newMemory}
@@ -1901,7 +1901,7 @@ export default function App() {
                 style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddMemory()}
               />
-              <button 
+              <button
                 onClick={handleAddMemory}
                 style={{ padding: '10px 16px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 500 }}
               >
@@ -1913,7 +1913,7 @@ export default function App() {
                 <div key={m.id} className="panel-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'uppercase' }}>{m.category}</span>
-                    <button 
+                    <button
                       onClick={async () => {
                         await fetch(`/api/memories/${m.id}`, { method: 'DELETE' });
                         fetchMemories();
@@ -1964,15 +1964,15 @@ export default function App() {
                 <Globe size={18} color="var(--accent)" />
                 <h3 style={{ margin: 0, fontSize: '15px' }}>Reference Source Details</h3>
               </div>
-              <button 
-                className="close-drawer-btn" 
+              <button
+                className="close-drawer-btn"
                 onClick={() => setActiveSourceDrawer(null)}
                 title="Close"
               >
                 <X size={16} />
               </button>
             </div>
-            
+
             <div className="source-drawer-body">
               <div style={{ marginBottom: '14px' }}>
                 <strong style={{ fontSize: '12px', color: 'var(--text-muted)' }}>SOURCE IDENTIFIER</strong>
@@ -1994,10 +1994,10 @@ export default function App() {
                 <div style={{ marginBottom: '16px' }}>
                   <strong style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ORIGIN URL</strong>
                   <div style={{ marginTop: '4px' }}>
-                    <a 
-                      href={activeSourceDrawer.url} 
-                      target="_blank" 
-                      rel="noreferrer" 
+                    <a
+                      href={activeSourceDrawer.url}
+                      target="_blank"
+                      rel="noreferrer"
                       style={{ color: '#38bdf8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', wordBreak: 'break-all' }}
                     >
                       {activeSourceDrawer.url} <ExternalLink size={13} />
@@ -2015,7 +2015,7 @@ export default function App() {
       )}
 
       {/* Astra Interactive Easter Egg Companion */}
-      <AstraCompanion 
+      <AstraCompanion
         isVisible={isAstraActive}
         onClose={() => {
           setIsAstraActive(false);
